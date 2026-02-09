@@ -124,8 +124,8 @@ export async function getDeveloperUser(): Promise<User | null> {
 export async function requireDeveloper(): Promise<User | null> {
   const user = await getDeveloperUser();
   if (!user) {
-    console.log("User is not a developer");
     
+    redirect("/dashboard");
   }
   return user;
 }
