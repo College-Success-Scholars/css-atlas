@@ -1,0 +1,61 @@
+import { EASTERN_TIMEZONE } from "./campus-week";
+
+/**
+ * Format an ISO date string for display in the Entered column.
+ * Same day (Eastern) → time only (e.g. 11:06am);
+ * within last 6 days → weekday (e.g. Monday);
+ * else "Month Day, Time" (e.g. January 6th, 9:30pm).
+ */
+export function formatEntryDate(iso: string): string {
+  const d = new Date(iso);
+  const todayET = new Date().toLocaleDateString("en-CA", {
+    timeZone: EASTERN_TIMEZONE,
+  });
+  const entryET = d.toLocaleDateString("en-CA", {
+    timeZone: EASTERN_TIMEZONE,
+  });
+  const timeOnly = d
+    .toLocaleTimeString("en-US", {
+      timeZone: EASTERN_TIMEZONE,
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    })
+    .toLowerCase()
+    .replace(/\s/g, "");
+  if (entryET === todayET) return timeOnly;
+  const [y1, m1, d1] = todayET.split("-").map(Number);
+  const [y2, m2, d2] = entryET.split("-").map(Number);
+  const daysAgo = (y1 - y2) * 372 + (m1 - m2) * 31 + (d1 - d2);
+  if (daysAgo >= 1 && daysAgo <= 6) {
+    return d.toLocaleDateString("en-US", {
+      timeZone: EASTERN_TIMEZONE,
+      weekday: "long",
+    });
+  }
+  const month = d.toLocaleDateString("en-US", {
+    timeZone: EASTERN_TIMEZONE,
+    month: "long",
+  });
+  const dayNum = d2;
+  const ord =
+    dayNum === 1 || dayNum === 21 || dayNum === 31
+      ? "st"
+      : dayNum === 2 || dayNum === 22
+        ? "nd"
+        : dayNum === 3 || dayNum === 23
+          ? "rd"
+          : "th";
+  return `${month} ${dayNum}${ord}, ${timeOnly}`;
+}
+
+/**
+ * Get duration in milliseconds from a session record (in-room or completed).
+ * Uses durationMs for completed sessions, timeInRoomMs for in-room.
+ */
+export function getDurationMs(item: {
+  timeInRoomMs?: number;
+  durationMs?: number;
+}): number {
+  return item.durationMs ?? item.timeInRoomMs ?? 0;
+}
