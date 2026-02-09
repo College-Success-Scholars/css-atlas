@@ -21,4 +21,4 @@ export {
   WEEKS_IGNORE_FORMS,
   WEEKS_IGNORE_SESSIONS,
 } from "./config";
-export { formatEntryDate, getDurationMs } from "./utils";
+export { formatDate, formatDuration, formatEntryDate, getDurationMs } from "./utils";

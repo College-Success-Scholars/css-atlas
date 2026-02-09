@@ -50,6 +50,32 @@ export function formatEntryDate(iso: string): string {
 }
 
 /**
+ * Format a duration in milliseconds as "Xh Ym Zs" (omits zero segments).
+ */
+export function formatDuration(ms: number): string {
+  const totalSeconds = Math.floor(ms / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  const parts: string[] = [];
+  if (hours > 0) parts.push(`${hours}h`);
+  if (minutes > 0) parts.push(`${minutes}m`);
+  parts.push(`${seconds}s`);
+  return parts.join(" ");
+}
+
+/**
+ * Format an ISO date string as short date + short time in Eastern time.
+ */
+export function formatDate(iso: string): string {
+  return new Date(iso).toLocaleString("en-US", {
+    timeZone: EASTERN_TIMEZONE,
+    dateStyle: "short",
+    timeStyle: "short",
+  });
+}
+
+/**
  * Get duration in milliseconds from a session record (in-room or completed).
  * Uses durationMs for completed sessions, timeInRoomMs for in-room.
  */

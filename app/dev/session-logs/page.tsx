@@ -17,6 +17,8 @@ import type {
 import {
   dateToCampusWeek,
   campusWeekToDateRange,
+  formatDate,
+  formatDuration,
   formatEntryDate,
   getDurationMs,
 } from "@/lib/time";
@@ -40,26 +42,6 @@ export const metadata = {
   title: "Session Logs Test | Dev Tools",
   description: "Test session log utilities against study_session_logs",
 };
-
-function formatDuration(ms: number): string {
-  const totalSeconds = Math.floor(ms / 1000);
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-  const parts: string[] = [];
-  if (hours > 0) parts.push(`${hours}h`);
-  if (minutes > 0) parts.push(`${minutes}m`);
-  parts.push(`${seconds}s`);
-  return parts.join(" ");
-}
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleString("en-US", {
-    timeZone: "America/New_York",
-    dateStyle: "short",
-    timeStyle: "short",
-  });
-}
 
 type PageProps = {
   searchParams: Promise<{ week?: string }>;
@@ -268,19 +250,35 @@ function ScholarsInRoomTableSection({
   formatDuration: (ms: number) => string;
   formatEntryDate: (iso: string) => string;
 }) {
-  const extraColumns: ScholarDataTableColumn<ScholarInRoom>[] = [
+  type Row = ScholarInRoom & {
+    enteredDisplay: string;
+    durationDisplay: string;
+    nameSort: string;
+  };
+  const tableData: Row[] = data.map((row) => ({
+    ...row,
+    enteredDisplay: formatEntryDate(row.entryAt),
+    durationDisplay: formatDuration(row.timeInRoomMs),
+    nameSort: (row.scholarName ?? row.scholarUid).toLowerCase(),
+  }));
+
+  const extraColumns: ScholarDataTableColumn<Row>[] = [
     {
       id: "entered",
       header: "Entered",
       width: "20%",
-      render: (row) => formatEntryDate(row.entryAt),
+      field: "enteredDisplay",
+      sortField: "entryAt",
       cellClassName: "text-muted-foreground",
+      sortable: true,
     },
     {
       id: "duration",
       header: "Duration",
       width: "20%",
-      render: (row) => formatDuration(row.timeInRoomMs),
+      field: "durationDisplay",
+      sortField: "timeInRoomMs",
+      sortable: true,
     },
   ];
   return (
@@ -288,21 +286,25 @@ function ScholarsInRoomTableSection({
       <h3 className="font-medium text-sm text-muted-foreground mb-2">
         {title} ({data.length})
       </h3>
-      <ScholarDataTable<ScholarInRoom>
-        data={data}
-        getRowKey={(row, i) => `${row.scholarUid}-${i}`}
+      <ScholarDataTable<Row>
+        data={tableData}
+        rowKeyField="scholarUid"
         nameColumn={{
           header: "",
           colSpan: 2,
           width: "40%",
-          render: (row) => row.scholarName ?? row.scholarUid,
+          field: "scholarName",
+          fallbackField: "scholarUid",
+          sortField: "nameSort",
           cellClassName: "font-medium",
+          sortable: true,
         }}
         uidColumn={{
           header: "UID",
           width: "20%",
-          render: (row) => row.scholarUid,
+          field: "scholarUid",
           cellClassName: "text-muted-foreground font-mono text-xs",
+          sortable: true,
         }}
         columns={extraColumns}
       />
@@ -321,20 +323,38 @@ function CompletedSessionsTableSection({
   formatDuration: (ms: number) => string;
   formatDate: (iso: string) => string;
 }) {
-  const extraColumns: ScholarDataTableColumn<ScholarWithCompletedSession>[] = [
+  type Row = ScholarWithCompletedSession & {
+    enteredDisplay: string;
+    durationDisplay: string;
+    durationMs: number;
+    nameSort: string;
+  };
+  const tableData: Row[] = data.map((row) => ({
+    ...row,
+    enteredDisplay: formatDate(row.entryAt),
+    durationDisplay: formatDuration(getDurationMs(row)),
+    durationMs: getDurationMs(row),
+    nameSort: (row.scholarName ?? row.scholarUid).toLowerCase(),
+  }));
+
+  const extraColumns: ScholarDataTableColumn<Row>[] = [
     {
       id: "entered",
       header: "Entered",
       width: "20%",
-      render: (row) => formatDate(row.entryAt),
+      field: "enteredDisplay",
+      sortField: "entryAt",
       cellClassName: "text-muted-foreground",
+      sortable: true,
     },
     {
       id: "duration",
       header: "Duration",
       width: "20%",
-      render: (row) => formatDuration(getDurationMs(row)),
+      field: "durationDisplay",
+      sortField: "durationMs",
       cellClassName: "text-muted-foreground",
+      sortable: true,
     },
   ];
   return (
@@ -342,21 +362,25 @@ function CompletedSessionsTableSection({
       <h3 className="font-medium text-sm text-muted-foreground mb-2">
         {title} ({data.length})
       </h3>
-      <ScholarDataTable<ScholarWithCompletedSession>
-        data={data}
-        getRowKey={(row, i) => `${row.scholarUid}-${i}`}
+      <ScholarDataTable<Row>
+        data={tableData}
+        rowKeyField="scholarUid"
         nameColumn={{
           header: "",
           colSpan: 2,
           width: "40%",
-          render: (row) => row.scholarName ?? row.scholarUid,
+          field: "scholarName",
+          fallbackField: "scholarUid",
+          sortField: "nameSort",
           cellClassName: "font-medium",
+          sortable: true,
         }}
         uidColumn={{
           header: "UID",
           width: "20%",
-          render: (row) => row.scholarUid,
+          field: "scholarUid",
           cellClassName: "text-muted-foreground font-mono text-xs",
+          sortable: true,
         }}
         columns={extraColumns}
       />
