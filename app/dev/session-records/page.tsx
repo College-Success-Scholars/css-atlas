@@ -3,14 +3,6 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import {
-  getFrontDeskRecord,
-  getStudySessionRecord,
-  syncFrontDeskRecordsForWeek,
-  syncFrontDeskRecordsForWeekAllUids,
-  syncStudySessionRecordsForWeek,
-  syncStudySessionRecordsForWeekAllUids,
-} from "@/lib/session-records";
 import type {
   FrontDeskRecordRow,
   StudySessionRecordRow,
@@ -64,8 +56,15 @@ export default function SessionRecordsTestPage() {
     setRecordRequested(true);
     setRecord("loading");
     try {
-      const r = await getFrontDeskRecord(uid, week);
-      setRecord(r);
+      const res = await fetch(
+        `/api/dev/session-records/front-desk?uid=${uid}&week=${week}`
+      );
+      const json = await res.json();
+      if (!res.ok) {
+        setRecord(null);
+        return;
+      }
+      setRecord(json.data ?? null);
     } catch {
       setRecord(null);
     }
@@ -75,8 +74,15 @@ export default function SessionRecordsTestPage() {
     setStudyRecordRequested(true);
     setStudyRecord("loading");
     try {
-      const r = await getStudySessionRecord(uid, week);
-      setStudyRecord(r);
+      const res = await fetch(
+        `/api/dev/session-records/study?uid=${uid}&week=${week}`
+      );
+      const json = await res.json();
+      if (!res.ok) {
+        setStudyRecord(null);
+        return;
+      }
+      setStudyRecord(json.data ?? null);
     } catch {
       setStudyRecord(null);
     }
@@ -119,7 +125,20 @@ export default function SessionRecordsTestPage() {
     setSyncing("one");
     setSyncMessage(null);
     try {
-      const result = await syncFrontDeskRecordsForWeek(weekNum, uidNum);
+      const res = await fetch("/api/dev/session-records/front-desk/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ weekNum, uid: uidNum }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setSyncMessage({
+          type: "err",
+          text: json.error ?? "Sync failed.",
+        });
+        return;
+      }
+      const result = json.data as { upserted: number };
       setSyncMessage({
         type: "ok",
         text: `Synced ${result.upserted} record(s) for week ${weekNum}.`,
@@ -152,7 +171,20 @@ export default function SessionRecordsTestPage() {
     setStudySyncing("one");
     setStudySyncMessage(null);
     try {
-      const result = await syncStudySessionRecordsForWeek(weekNum, uidNum);
+      const res = await fetch("/api/dev/session-records/study/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ weekNum, uid: uidNum }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setStudySyncMessage({
+          type: "err",
+          text: json.error ?? "Study session sync failed.",
+        });
+        return;
+      }
+      const result = json.data as { upserted: number };
       setStudySyncMessage({
         type: "ok",
         text: `Synced ${result.upserted} study session record(s) for week ${weekNum}.`,
@@ -179,7 +211,20 @@ export default function SessionRecordsTestPage() {
     setStudySyncing("all");
     setStudySyncMessage(null);
     try {
-      const result = await syncStudySessionRecordsForWeekAllUids(weekNum);
+      const res = await fetch("/api/dev/session-records/study/sync-all", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ weekNum }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setStudySyncMessage({
+          type: "err",
+          text: json.error ?? "Study session sync failed.",
+        });
+        return;
+      }
+      const result = json.data as { upserted: number };
       setStudySyncMessage({
         type: "ok",
         text: `Synced ${result.upserted} study session record(s) for all users (week ${weekNum}).`,
@@ -206,7 +251,20 @@ export default function SessionRecordsTestPage() {
     setSyncing("all");
     setSyncMessage(null);
     try {
-      const result = await syncFrontDeskRecordsForWeekAllUids(weekNum);
+      const res = await fetch("/api/dev/session-records/front-desk/sync-all", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ weekNum }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setSyncMessage({
+          type: "err",
+          text: json.error ?? "Sync failed.",
+        });
+        return;
+      }
+      const result = json.data as { upserted: number };
       setSyncMessage({
         type: "ok",
         text: `Synced ${result.upserted} record(s) for all users (week ${weekNum}).`,
@@ -240,8 +298,8 @@ export default function SessionRecordsTestPage() {
         <h1 className="text-2xl font-bold">Session Records Test</h1>
         <p className="text-muted-foreground mt-1">
           Sync and read <code className="rounded bg-muted px-1">front_desk_records</code> and{" "}
-          <code className="rounded bg-muted px-1">study_session_records</code> from ticket data
-          (lib/session-records).
+          <code className="rounded bg-muted px-1">study_session_records</code> via{" "}
+          <code className="rounded bg-muted px-1">/api/dev/session-records</code>.
         </p>
       </div>
 

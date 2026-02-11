@@ -6,9 +6,8 @@ import {
   getFrontDeskCleanedAndErrored,
   getFrontDeskScholarsInRoom,
   getFrontDeskCompletedSessions,
-  SESSION_TYPE_STUDY,
-  SESSION_TYPE_FRONT_DESK,
-} from "@/lib/session-logs";
+} from "@/lib/server/session-logs";
+import { SESSION_TYPE_STUDY, SESSION_TYPE_FRONT_DESK } from "@/lib/session-logs";
 import type {
   ScholarInRoom,
   ScholarWithCompletedSession,

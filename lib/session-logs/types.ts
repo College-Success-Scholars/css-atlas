@@ -113,3 +113,25 @@ export interface ScholarWithCompletedSession {
   /** Session type when filtered */
   sessionType?: string | null;
 }
+
+/** Supabase row shape for front_desk_logs (for server-side use). */
+export interface FrontDeskLogRow {
+  id: string;
+  created_at: string;
+  rep_name: string | null;
+  scholar_uid: string | null;
+  action_type: string | null;
+  session_type: string | null;
+  submitted_by_email: string | null;
+}
+
+/** Supabase row shape for study_session_logs (for server-side use). */
+export interface StudySessionLogRow {
+  id: string;
+  created_at: string;
+  rep_name: string | null;
+  scholar_uid: string | null;
+  action_type: string | null;
+  session_type: string | null;
+  submitted_by_email: string | null;
+}
