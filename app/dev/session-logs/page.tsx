@@ -15,6 +15,19 @@ import type {
   CleanedAndErroredResult,
 } from "@/lib/session-logs";
 import {
+  dateToCampusWeek,
+  campusWeekToDateRange,
+  formatDate,
+  formatDuration,
+  formatEntryDate,
+  getDurationMs,
+} from "@/lib/time";
+import { SessionHeatMap } from "./session-heat-map";
+import {
+  ScholarDataTable,
+  type ScholarDataTableColumn,
+} from "@/components/scholar-data-table";
+import {
   Card,
   CardContent,
   CardDescription,
@@ -23,32 +36,36 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
 export const metadata = {
   title: "Session Logs Test | Dev Tools",
   description: "Test session log utilities against study_session_logs",
 };
 
-function formatDuration(ms: number): string {
-  const totalSeconds = Math.floor(ms / 1000);
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-  const parts: string[] = [];
-  if (hours > 0) parts.push(`${hours}h`);
-  if (minutes > 0) parts.push(`${minutes}m`);
-  parts.push(`${seconds}s`);
-  return parts.join(" ");
-}
+type PageProps = {
+  searchParams: Promise<{ week?: string }>;
+};
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleString("en-US", {
-    timeZone: "America/New_York",
-    dateStyle: "short",
-    timeStyle: "short",
-  });
-}
+export default async function SessionLogsTestPage({ searchParams }: PageProps) {
+  const params = await searchParams;
+  const weekParam = params.week;
+  const weekNum =
+    weekParam != null && weekParam !== ""
+      ? Math.max(1, Math.min(30, parseInt(weekParam, 10) || 1))
+      : null;
 
-export default async function SessionLogsTestPage() {
+  const range =
+    weekNum != null ? campusWeekToDateRange(weekNum) : null;
+
+  // For DB queries: include full last day (end of Sunday)
+  const startDate = range?.startDate ?? undefined;
+  const endDate = range
+    ? new Date(range.endDate.getTime() + ONE_DAY_MS - 1)
+    : undefined;
+
+  const dateRangeOpts = { startDate, endDate };
+
   const [
     cleanedStudy,
     cleanedFd,
@@ -57,13 +74,15 @@ export default async function SessionLogsTestPage() {
     completedStudy,
     completedFd,
   ] = await Promise.all([
-    getStudySessionCleanedAndErrored(),
-    getFrontDeskCleanedAndErrored(),
-    getStudySessionScholarsInRoom(),
-    getFrontDeskScholarsInRoom(),
-    getStudySessionCompletedSessions(),
-    getFrontDeskCompletedSessions(),
+    getStudySessionCleanedAndErrored(dateRangeOpts),
+    getFrontDeskCleanedAndErrored(dateRangeOpts),
+    getStudySessionScholarsInRoom(dateRangeOpts),
+    getFrontDeskScholarsInRoom(dateRangeOpts),
+    getStudySessionCompletedSessions(dateRangeOpts),
+    getFrontDeskCompletedSessions(dateRangeOpts),
   ]);
+
+  const currentCampusWeek = dateToCampusWeek(new Date());
 
   return (
     <div className="container mx-auto max-w-5xl space-y-8 py-12">
@@ -83,6 +102,69 @@ export default async function SessionLogsTestPage() {
         </p>
       </div>
 
+      {/* Time utilities */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Time utilities</CardTitle>
+          <CardDescription>
+            Filter sessions by campus week. Uses academic calendar from lib/time.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="text-muted-foreground">
+              Current campus week:
+            </span>
+            <Badge variant="secondary">
+              {currentCampusWeek ?? "—"}
+            </Badge>
+          </div>
+          <div>
+            <p className="text-muted-foreground text-sm mb-2">
+              View sessions for a specific week:
+            </p>
+            <div className="flex flex-wrap gap-1">
+              {Array.from({ length: 25 }, (_, i) => i + 1).map((w) => (
+                <Link
+                  key={w}
+                  href={`/dev/session-logs?week=${w}`}
+                  className={`inline-flex h-8 min-w-8 items-center justify-center rounded-md px-2 text-sm font-medium transition-colors ${weekNum === w
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
+                    }`}
+                >
+                  {w}
+                </Link>
+              ))}
+            </div>
+          </div>
+          {range && (
+            <div className="rounded-md border bg-muted/50 p-3 text-sm">
+              <span className="font-medium">Week {range.weekNumber}:</span>{" "}
+              <span className="text-muted-foreground">
+                {range.startDate.toLocaleDateString("en-US", {
+                  timeZone: "America/New_York",
+                })}{" "}
+                -{" "}
+                {range.endDate.toLocaleDateString("en-US", {
+                  timeZone: "America/New_York",
+                })}{" "}
+                (ET)
+              </span>
+              <Link
+                href="/dev/session-logs"
+                className="ml-3 text-sm text-muted-foreground hover:text-foreground underline"
+              >
+                Clear filter
+              </Link>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Session Heat Map */}
+      <SessionHeatMap completedStudy={completedStudy} completedFd={completedFd} />
+
       {/* Scholars Currently in Room */}
       <Card>
         <CardHeader>
@@ -92,17 +174,17 @@ export default async function SessionLogsTestPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <SessionTypeSection
+          <ScholarsInRoomTableSection
             title={SESSION_TYPE_STUDY}
             data={inRoomStudy}
             formatDuration={formatDuration}
-            formatDate={formatDate}
+            formatEntryDate={formatEntryDate}
           />
-          <SessionTypeSection
+          <ScholarsInRoomTableSection
             title={SESSION_TYPE_FRONT_DESK}
             data={inRoomFd}
             formatDuration={formatDuration}
-            formatDate={formatDate}
+            formatEntryDate={formatEntryDate}
           />
         </CardContent>
       </Card>
@@ -116,19 +198,17 @@ export default async function SessionLogsTestPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <SessionTypeSection
+          <CompletedSessionsTableSection
             title={SESSION_TYPE_STUDY}
             data={completedStudy}
             formatDuration={formatDuration}
             formatDate={formatDate}
-            showCompleted
           />
-          <SessionTypeSection
+          <CompletedSessionsTableSection
             title={SESSION_TYPE_FRONT_DESK}
             data={completedFd}
             formatDuration={formatDuration}
             formatDate={formatDate}
-            showCompleted
           />
         </CardContent>
       </Card>
@@ -159,54 +239,151 @@ export default async function SessionLogsTestPage() {
   );
 }
 
-function SessionTypeSection({
+function ScholarsInRoomTableSection({
   title,
   data,
   formatDuration,
-  formatDate,
-  showCompleted,
+  formatEntryDate,
 }: {
   title: string;
-  data: ScholarInRoom[] | ScholarWithCompletedSession[];
+  data: ScholarInRoom[];
   formatDuration: (ms: number) => string;
-  formatDate: (iso: string) => string;
-  showCompleted?: boolean;
+  formatEntryDate: (iso: string) => string;
 }) {
+  type Row = ScholarInRoom & {
+    enteredDisplay: string;
+    durationDisplay: string;
+    nameSort: string;
+  };
+  const tableData: Row[] = data.map((row) => ({
+    ...row,
+    enteredDisplay: formatEntryDate(row.entryAt),
+    durationDisplay: formatDuration(row.timeInRoomMs),
+    nameSort: (row.scholarName ?? row.scholarUid).toLowerCase(),
+  }));
+
+  const extraColumns: ScholarDataTableColumn<Row>[] = [
+    {
+      id: "entered",
+      header: "Entered",
+      width: "20%",
+      field: "enteredDisplay",
+      sortField: "entryAt",
+      cellClassName: "text-muted-foreground",
+      sortable: true,
+    },
+    {
+      id: "duration",
+      header: "Duration",
+      width: "20%",
+      field: "durationDisplay",
+      sortField: "timeInRoomMs",
+      sortable: true,
+    },
+  ];
   return (
     <div>
       <h3 className="font-medium text-sm text-muted-foreground mb-2">
         {title} ({data.length})
       </h3>
-      {data.length === 0 ? (
-        <p className="text-muted-foreground text-sm">No records</p>
-      ) : (
-        <ul className="space-y-2 rounded-md border p-3 text-sm">
-          {data.map((item, i) => {
-            const durationMs = showCompleted
-              ? "durationMs" in item
-                ? item.durationMs
-                : 0
-              : "timeInRoomMs" in item
-                ? item.timeInRoomMs
-                : 0;
-            return (
-              <li
-                key={`${item.scholarUid}-${i}`}
-                className="flex flex-wrap items-center gap-2"
-              >
-                <span className="font-medium">
-                  {item.scholarName ?? item.scholarUid}
-                </span>
-                <span className="text-muted-foreground">({item.scholarUid})</span>
-                <span className="text-muted-foreground">•</span>
-                <span>Entered: {formatDate(item.entryAt)}</span>
-                <span className="text-muted-foreground">•</span>
-                <span>Duration: {formatDuration(durationMs)}</span>
-              </li>
-            );
-          })}
-        </ul>
-      )}
+      <ScholarDataTable<Row>
+        data={tableData}
+        rowKeyField="scholarUid"
+        nameColumn={{
+          header: "",
+          colSpan: 2,
+          width: "40%",
+          field: "scholarName",
+          fallbackField: "scholarUid",
+          sortField: "nameSort",
+          cellClassName: "font-medium",
+          sortable: true,
+        }}
+        uidColumn={{
+          header: "UID",
+          width: "20%",
+          field: "scholarUid",
+          cellClassName: "text-muted-foreground font-mono text-xs",
+          sortable: true,
+        }}
+        columns={extraColumns}
+      />
+    </div>
+  );
+}
+
+function CompletedSessionsTableSection({
+  title,
+  data,
+  formatDuration,
+  formatDate,
+}: {
+  title: string;
+  data: ScholarWithCompletedSession[];
+  formatDuration: (ms: number) => string;
+  formatDate: (iso: string) => string;
+}) {
+  type Row = ScholarWithCompletedSession & {
+    enteredDisplay: string;
+    durationDisplay: string;
+    durationMs: number;
+    nameSort: string;
+  };
+  const tableData: Row[] = data.map((row) => ({
+    ...row,
+    enteredDisplay: formatDate(row.entryAt),
+    durationDisplay: formatDuration(getDurationMs(row)),
+    durationMs: getDurationMs(row),
+    nameSort: (row.scholarName ?? row.scholarUid).toLowerCase(),
+  }));
+
+  const extraColumns: ScholarDataTableColumn<Row>[] = [
+    {
+      id: "entered",
+      header: "Entered",
+      width: "20%",
+      field: "enteredDisplay",
+      sortField: "entryAt",
+      cellClassName: "text-muted-foreground",
+      sortable: true,
+    },
+    {
+      id: "duration",
+      header: "Duration",
+      width: "20%",
+      field: "durationDisplay",
+      sortField: "durationMs",
+      cellClassName: "text-muted-foreground",
+      sortable: true,
+    },
+  ];
+  return (
+    <div>
+      <h3 className="font-medium text-sm text-muted-foreground mb-2">
+        {title} ({data.length})
+      </h3>
+      <ScholarDataTable<Row>
+        data={tableData}
+        rowKeyField="scholarUid"
+        nameColumn={{
+          header: "",
+          colSpan: 2,
+          width: "40%",
+          field: "scholarName",
+          fallbackField: "scholarUid",
+          sortField: "nameSort",
+          cellClassName: "font-medium",
+          sortable: true,
+        }}
+        uidColumn={{
+          header: "UID",
+          width: "20%",
+          field: "scholarUid",
+          cellClassName: "text-muted-foreground font-mono text-xs",
+          sortable: true,
+        }}
+        columns={extraColumns}
+      />
     </div>
   );
 }
