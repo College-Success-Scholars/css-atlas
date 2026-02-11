@@ -1,26 +1,11 @@
 /**
- * Session records: weekly minute aggregates synced from session log tickets.
- * Uses lib/session-logs for ticket fetching and processing; this module handles
- * the records tables (front_desk_records, future study_session_records).
+ * Session records: client-safe types and pure utilities (weekly minutes, date helpers).
+ * For server-side data and sync (Supabase), use lib/server/session-records or app/api routes.
  */
 
-export {
-  getFrontDeskRecord,
-  getFrontDeskRecordByUidString,
-  syncFrontDeskRecordsForWeek,
-  syncFrontDeskRecordsForWeekAllUids,
-} from "./front-desk-records";
+export type { FrontDeskRecordRow, StudySessionRecordRow } from "./types";
 
-export type { FrontDeskRecordRow } from "./front-desk-records";
-
-export {
-  getStudySessionRecord,
-  getStudySessionRecordByUidString,
-  syncStudySessionRecordsForWeek,
-  syncStudySessionRecordsForWeekAllUids,
-} from "./study-session-records";
-
-export type { StudySessionRecordRow } from "./study-session-records";
+export { getWeekFetchEnd, EMPTY_WEEKLY_MINUTES } from "./utils";
 
 export { computeWeeklyMinutesByUid } from "./weekly-minutes";
 

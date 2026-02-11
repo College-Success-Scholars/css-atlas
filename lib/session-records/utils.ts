@@ -1,8 +1,7 @@
-import { createClient } from "@/lib/supabase/server";
 import type { WeeklyMinutesByDay } from "./weekly-minutes";
 
 /**
- * Shared utilities for session record modules (front_desk_records, study_session_records).
+ * Shared pure utilities for session record modules. Client-safe.
  */
 
 /**
@@ -23,20 +22,3 @@ export const EMPTY_WEEKLY_MINUTES: WeeklyMinutesByDay = {
   thurs_min: 0,
   fri_min: 0,
 };
-
-/**
- * Fetch all distinct uids from public.users (where uid is not null).
- * Used to sync records for every scholar.
- */
-export async function fetchAllUserUids(): Promise<string[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("users")
-    .select("uid")
-    .not("uid", "is", null);
-
-  if (error) throw error;
-
-  const uids = [...new Set((data ?? []).map((r) => String(r.uid)).filter(Boolean))];
-  return uids;
-}

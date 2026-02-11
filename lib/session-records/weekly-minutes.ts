@@ -1,5 +1,5 @@
-import type { ScholarWithCompletedSession } from "@/lib/session-logs";
-import { EASTERN_TIMEZONE } from "@/lib/session-logs";
+import type { ScholarWithCompletedSession } from "@/lib/session-logs/types";
+import { EASTERN_TIMEZONE } from "@/lib/session-logs/types";
 
 /**
  * Day-of-week minutes for a single scholar (Monday–Friday).

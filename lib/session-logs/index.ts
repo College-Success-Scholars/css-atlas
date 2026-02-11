@@ -1,11 +1,6 @@
 /**
- * Session logs module - generic utilities for entry/exit ticket tables.
- *
- * Use with study_session_logs or any table with similar schema:
- * - id, created_at, scholar_uid, scholar_name, action_type (Entry/Exit)
- *
- * For a new table: create a fetcher that returns SessionLogRow[], then pass
- * to getCleanedAndErroredTickets, getScholarsCurrentlyInRoom, or getScholarsWithValidEntryExit.
+ * Session logs module - client-safe types and pure data-cleaning utilities.
+ * For server-side data fetching (Supabase), use lib/server/session-logs.
  */
 
 export {
@@ -34,22 +29,8 @@ export type {
   CleanedAndErroredResult,
   ScholarInRoom,
   ScholarWithCompletedSession,
+  FrontDeskLogRow,
+  StudySessionLogRow,
 } from "./types";
 
-export {
-  fetchStudySessionLogs,
-  getStudySessionCleanedAndErrored,
-  getStudySessionScholarsInRoom,
-  getStudySessionCompletedSessions,
-} from "./study-session-logs";
-
-export type { StudySessionLogRow } from "./study-session-logs";
-
-export {
-  fetchFrontDeskLogs,
-  getFrontDeskCleanedAndErrored,
-  getFrontDeskScholarsInRoom,
-  getFrontDeskCompletedSessions,
-} from "./front-desk-logs";
-
-export type { FrontDeskLogRow } from "./front-desk-logs";
+export { enrichCleanedAndErroredWithNames, enrichWithScholarNames } from "./utils";
