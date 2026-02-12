@@ -43,16 +43,19 @@ export const metadata = {
 };
 
 type PageProps = {
-  searchParams: Promise<{ week?: string }>;
+  searchParams: Promise<{ week?: string; uids?: string }>;
 };
 
 export default async function SessionLogsTestPage({ searchParams }: PageProps) {
   const params = await searchParams;
   const weekParam = params.week;
+  const currentCampusWeek = dateToCampusWeek(new Date());
   const weekNum =
     weekParam != null && weekParam !== ""
       ? Math.max(1, Math.min(30, parseInt(weekParam, 10) || 1))
-      : null;
+      : currentCampusWeek != null
+        ? Math.max(1, Math.min(30, currentCampusWeek))
+        : null;
 
   const range =
     weekNum != null ? campusWeekToDateRange(weekNum) : null;
@@ -63,7 +66,18 @@ export default async function SessionLogsTestPage({ searchParams }: PageProps) {
     ? new Date(range.endDate.getTime() + ONE_DAY_MS - 1)
     : undefined;
 
-  const dateRangeOpts = { startDate, endDate };
+  const scholarUids =
+    params.uids != null && params.uids !== ""
+      ? params.uids
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : undefined;
+
+  const hasLimit =
+    startDate != null || endDate != null || (scholarUids != null && scholarUids.length > 0);
+
+  const dateRangeOpts = { startDate, endDate, scholarUids };
 
   const [
     cleanedStudy,
@@ -72,16 +86,23 @@ export default async function SessionLogsTestPage({ searchParams }: PageProps) {
     inRoomFd,
     completedStudy,
     completedFd,
-  ] = await Promise.all([
-    getStudySessionCleanedAndErrored(dateRangeOpts),
-    getFrontDeskCleanedAndErrored(dateRangeOpts),
-    getStudySessionScholarsInRoom(dateRangeOpts),
-    getFrontDeskScholarsInRoom(dateRangeOpts),
-    getStudySessionCompletedSessions(dateRangeOpts),
-    getFrontDeskCompletedSessions(dateRangeOpts),
-  ]);
-
-  const currentCampusWeek = dateToCampusWeek(new Date());
+  ] = hasLimit
+    ? await Promise.all([
+        getStudySessionCleanedAndErrored(dateRangeOpts),
+        getFrontDeskCleanedAndErrored(dateRangeOpts),
+        getStudySessionScholarsInRoom(dateRangeOpts),
+        getFrontDeskScholarsInRoom(dateRangeOpts),
+        getStudySessionCompletedSessions(dateRangeOpts),
+        getFrontDeskCompletedSessions(dateRangeOpts),
+      ])
+    : [
+        { allCleaned: [], allErrored: [], byScholarUid: new Map() },
+        { allCleaned: [], allErrored: [], byScholarUid: new Map() },
+        [],
+        [],
+        [],
+        [],
+      ];
 
   return (
     <div className="container mx-auto max-w-5xl space-y-8 py-12">
@@ -100,6 +121,17 @@ export default async function SessionLogsTestPage({ searchParams }: PageProps) {
           Study session: study_session_logs. Front desk: front_desk_logs table.
         </p>
       </div>
+
+      {!hasLimit && (
+        <Card className="border-amber-500/50 bg-amber-500/5">
+          <CardContent className="pt-6">
+            <p className="text-sm">
+              Select a <strong>week</strong> or enter <strong>UIDs</strong> (e.g.{" "}
+              <code className="rounded bg-muted px-1">?uids=1,2,3</code>) to limit the search and load data.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Time utilities */}
       <Card>
@@ -128,8 +160,8 @@ export default async function SessionLogsTestPage({ searchParams }: PageProps) {
                   key={w}
                   href={`/dev/session-logs?week=${w}`}
                   className={`inline-flex h-8 min-w-8 items-center justify-center rounded-md px-2 text-sm font-medium transition-colors ${weekNum === w
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
                     }`}
                 >
                   {w}
@@ -151,13 +183,36 @@ export default async function SessionLogsTestPage({ searchParams }: PageProps) {
                 (ET)
               </span>
               <Link
-                href="/dev/session-logs"
+                href={
+                  scholarUids
+                    ? `/dev/session-logs?uids=${scholarUids.join(",")}`
+                    : "/dev/session-logs"
+                }
                 className="ml-3 text-sm text-muted-foreground hover:text-foreground underline"
               >
-                Clear filter
+                {scholarUids ? "Clear week" : "Clear filter"}
               </Link>
             </div>
           )}
+          {scholarUids && scholarUids.length > 0 && (
+            <div className="rounded-md border bg-muted/50 p-3 text-sm">
+              <span className="font-medium">UIDs:</span>{" "}
+              <span className="text-muted-foreground font-mono text-xs">
+                {scholarUids.join(", ")}
+              </span>
+              <Link
+                href={weekNum != null ? `/dev/session-logs?week=${weekNum}` : "/dev/session-logs"}
+                className="ml-3 text-sm text-muted-foreground hover:text-foreground underline"
+              >
+                Clear UIDs
+              </Link>
+            </div>
+          )}
+          <p className="text-muted-foreground text-xs mt-2">
+            Optional: filter by scholar UIDs with{" "}
+            <code className="rounded bg-muted px-1">?uids=1,2,3</code> (comma-separated). Combine with{" "}
+            <code className="rounded bg-muted px-1">week</code> for date range + UID filter.
+          </p>
         </CardContent>
       </Card>
 
