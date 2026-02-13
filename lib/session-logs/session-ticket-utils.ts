@@ -137,11 +137,36 @@ function processScholarTickets(
       });
       lastActionWasExit = true;
     } else {
+      const entryDay = getStartOfDayEastern(new Date(lastEntryAt!)).getTime();
+      const exitDay = getStartOfDayEastern(new Date(ticket.created_at)).getTime();
+      const sameDay = entryDay === exitDay;
+
+      if (!sameDay) {
+        const lastEntryTicket = tickets.find(
+          (t) => t.created_at === lastEntryAt && isEntry(t, config)
+        );
+        if (lastEntryTicket) {
+          const idx = cleaned.findIndex((p) => p.ticket.id === lastEntryTicket.id);
+          if (idx >= 0) {
+            cleaned.splice(idx, 1);
+            errored.push({
+              ticket: lastEntryTicket,
+              error: "ENTRY_WITHOUT_SAME_DAY_EXIT",
+            });
+          }
+        }
+        errored.push({
+          ticket,
+          error: "EXIT_WITHOUT_ENTER",
+          pairedEntryAt: lastEntryAt ?? undefined,
+        });
+      } else {
+        cleaned.push({
+          ticket,
+          pairedEntryAt: lastEntryAt ?? undefined,
+        });
+      }
       lastActionWasExit = true;
-      cleaned.push({
-        ticket,
-        pairedEntryAt: lastEntryAt ?? undefined,
-      });
       inRoom = false;
       lastEntryAt = null;
     }
