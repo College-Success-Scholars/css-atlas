@@ -29,13 +29,30 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-type StudyRecordRow = StudySessionRecordRow & { scholar_name?: string | null };
+type StudyRecordRow = StudySessionRecordRow & {
+  scholar_name?: string | null;
+  fd_required?: number | null;
+  ss_required?: number | null;
+};
 type FrontDeskRecordRowWithName = FrontDeskRecordRow & {
   scholar_name?: string | null;
+  fd_required?: number | null;
+  ss_required?: number | null;
 };
 
 type StudyRecordRowWithTotal = StudyRecordRow & { total: number };
 type FrontDeskRecordRowWithTotal = FrontDeskRecordRowWithName & { total: number };
+
+/** Row with both fd/ss totals and required hours for the progress column. */
+type RecordRowWithProgress = (StudyRecordRowWithTotal | FrontDeskRecordRowWithTotal) & {
+  fd_total: number;
+  ss_total: number;
+  fd_required: number | null;
+  ss_required: number | null;
+  _tableType: "study" | "fd";
+  /** Percentage (0–100) for sorting; -1 when N/A. */
+  _requiredPct: number;
+};
 
 function addTotalStudy(row: StudyRecordRow): StudyRecordRowWithTotal {
   const total =
@@ -57,9 +74,102 @@ function addTotalFrontDesk(row: FrontDeskRecordRowWithName): FrontDeskRecordRowW
   return { ...row, total };
 }
 
-const sharedMinutesColumns: ScholarDataTableColumn<
-  StudyRecordRowWithTotal
->[] = [
+function mergeWithOtherTable(
+  studyRows: StudyRecordRowWithTotal[],
+  fdRows: FrontDeskRecordRowWithTotal[]
+): {
+  studyWithProgress: RecordRowWithProgress[];
+  fdWithProgress: RecordRowWithProgress[];
+} {
+  const fdByUid = new Map<number, FrontDeskRecordRowWithTotal>();
+  for (const r of fdRows) {
+    if (r.uid != null) fdByUid.set(r.uid, r);
+  }
+  const studyByUid = new Map<number, StudyRecordRowWithTotal>();
+  for (const r of studyRows) {
+    if (r.uid != null) studyByUid.set(r.uid, r);
+  }
+  const studyWithProgress: RecordRowWithProgress[] = studyRows.map((r) => {
+    const fd = r.uid != null ? fdByUid.get(r.uid) : undefined;
+    const ssReq = r.ss_required ?? 0;
+    const ssTotal = r.total;
+    const pct = ssReq > 0 ? (ssTotal / ssReq) * 100 : -1;
+    return {
+      ...r,
+      fd_total: fd?.total ?? 0,
+      ss_total: r.total,
+      fd_required: r.fd_required ?? null,
+      ss_required: r.ss_required ?? null,
+      _tableType: "study" as const,
+      _requiredPct: pct,
+    } as RecordRowWithProgress;
+  });
+  const fdWithProgress: RecordRowWithProgress[] = fdRows.map((r) => {
+    const study = r.uid != null ? studyByUid.get(r.uid) : undefined;
+    const fdReq = r.fd_required ?? 0;
+    const fdTotal = r.total;
+    const pct = fdReq > 0 ? (fdTotal / fdReq) * 100 : -1;
+    return {
+      ...r,
+      fd_total: r.total,
+      ss_total: study?.total ?? 0,
+      fd_required: r.fd_required ?? null,
+      ss_required: r.ss_required ?? null,
+      _tableType: "fd" as const,
+      _requiredPct: pct,
+    } as RecordRowWithProgress;
+  });
+  return { studyWithProgress, fdWithProgress };
+}
+
+function getRequiredBgClass(row: RecordRowWithProgress): string {
+  const isFd = row._tableType === "fd";
+  const req = isFd ? (row.fd_required ?? 0) : (row.ss_required ?? 0);
+  const total = isFd ? row.fd_total : row.ss_total;
+  if (req <= 0) return "bg-muted/50";
+  const pct = (total / req) * 100;
+  if (pct >= 90) return "bg-green-500/20";
+  if (pct >= 75) return "bg-yellow-500/20";
+  return "bg-red-500/20";
+}
+
+/** Format required minutes as hours (e.g. 60 → "1h", 90 → "1.5h"). */
+function formatRequiredAsHours(mins: number): string {
+  return `${mins / 60}h`;
+}
+
+function CombinedTotalProgressCell({ row }: { row: RecordRowWithProgress }) {
+  const isFd = row._tableType === "fd";
+  const req = isFd ? row.fd_required : row.ss_required;
+  const total = isFd ? row.fd_total : row.ss_total;
+  const label = isFd ? "FD" : "SS";
+  const bgClass = getRequiredBgClass(row);
+  const hasReq = req != null && req > 0;
+  const pct = hasReq ? Math.round((total / req) * 100) : null;
+  return (
+    <div
+      className={`flex items-center gap-3 rounded px-2 py-1 text-xs ${bgClass}`}
+      title={`${label}. Green: ≥90%, Yellow: 75–90%, Red: <75%`}
+    >
+      {hasReq ? (
+        <>
+          <span>
+            <span className="whitespace-pre-line font-semibold">
+              {formatMinutesToHoursAndMinutes(total)}
+            </span>
+            <span className="text-muted-foreground"> / </span>
+            <span className="text-xs">{formatRequiredAsHours(req)}</span>
+          </span>
+          <span className="text-muted-foreground text-xs">{pct}%</span>
+        </>
+      ) : (
+        <span className="text-muted-foreground">—</span>
+      )}
+    </div>
+  );
+}
+
+const sharedMinutesColumns: ScholarDataTableColumn<RecordRowWithProgress>[] = [
     {
       id: "mon",
       header: "Mon",
@@ -140,15 +250,13 @@ const sharedMinutesColumns: ScholarDataTableColumn<
       ),
     },
     {
-      id: "total",
-      header: "Total",
+      id: "total-progress",
+      header: "",
       field: "total",
+      colSpan: 2,
       sortable: true,
-      renderCell: (row) => (
-        <span className="whitespace-pre-line">
-          {formatMinutesToHoursAndMinutes(row.total)}
-        </span>
-      ),
+      sortField: "_requiredPct" as keyof RecordRowWithProgress,
+      renderCell: (row) => <CombinedTotalProgressCell row={row} />,
     },
   ];
 
@@ -498,7 +606,7 @@ export default function SessionRecordsTestPage() {
   }
 
   return (
-    <div className="container mx-auto max-w-3xl space-y-8 py-12">
+    <div className="container mx-auto max-w-5xl space-y-8 py-12">
       <div className="flex items-center gap-4">
         <Link
           href="/dev"
@@ -729,15 +837,22 @@ export default function SessionRecordsTestPage() {
           ) : (
             <>
               <CollapsibleTableSection title="Study session records" defaultOpen={true}>
-                {allScholarsRecords === "loading" ? (
+                {allScholarsRecords === "loading" ||
+                allFrontDeskRecords === "loading" ? (
                   <p className="text-muted-foreground text-sm">Loading…</p>
-                ) : allScholarsRecords === null || allScholarsRecords.length === 0 ? (
+                ) : allScholarsRecords === null ||
+                  allScholarsRecords.length === 0 ? (
                   <p className="text-muted-foreground text-sm">
                     No study session records for week {effectiveWeek}.
                   </p>
                 ) : (
-                  <ScholarDataTable<StudyRecordRowWithTotal>
-                    data={allScholarsRecords.map(addTotalStudy)}
+                  <ScholarDataTable<RecordRowWithProgress>
+                    data={mergeWithOtherTable(
+                      allScholarsRecords.map(addTotalStudy),
+                      allFrontDeskRecords !== null
+                        ? allFrontDeskRecords.map(addTotalFrontDesk)
+                        : []
+                    ).studyWithProgress}
                     rowKeyField="id"
                     nameColumn={{
                       field: "scholar_name",
@@ -752,15 +867,20 @@ export default function SessionRecordsTestPage() {
                 )}
               </CollapsibleTableSection>
               <CollapsibleTableSection title="Front desk records" defaultOpen={true}>
-                {allFrontDeskRecords === "loading" ? (
+                {allScholarsRecords === "loading" ||
+                allFrontDeskRecords === "loading" ? (
                   <p className="text-muted-foreground text-sm">Loading…</p>
-                ) : allFrontDeskRecords === null || allFrontDeskRecords.length === 0 ? (
+                ) : allFrontDeskRecords === null ||
+                  allFrontDeskRecords.length === 0 ? (
                   <p className="text-muted-foreground text-sm">
                     No front desk records for week {effectiveWeek}.
                   </p>
                 ) : (
-                  <ScholarDataTable<FrontDeskRecordRowWithTotal>
-                    data={allFrontDeskRecords.map(addTotalFrontDesk)}
+                  <ScholarDataTable<RecordRowWithProgress>
+                    data={mergeWithOtherTable(
+                      allScholarsRecords !== null ? allScholarsRecords.map(addTotalStudy) : [],
+                      allFrontDeskRecords.map(addTotalFrontDesk)
+                    ).fdWithProgress}
                     rowKeyField="id"
                     nameColumn={{
                       field: "scholar_name",

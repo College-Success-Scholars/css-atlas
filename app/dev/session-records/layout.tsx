@@ -11,7 +11,7 @@ export default function SessionRecordsLayout({
   children: React.ReactNode;
 }) {
   return (
-    <Suspense fallback={<div className="container mx-auto max-w-3xl py-12">Loading…</div>}>
+    <Suspense fallback={<div className="container mx-auto max-w-5xl py-12">Loading…</div>}>
       {children}
     </Suspense>
   );
