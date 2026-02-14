@@ -22,6 +22,31 @@ function isExit(row: SessionLogRow, config: SessionLogConfig): boolean {
   return (row.action_type ?? "").trim() === config.exitAction;
 }
 
+function getEasternDayKey(createdAt: string): number {
+  return getStartOfDayEastern(new Date(createdAt)).getTime();
+}
+
+function moveLastEntryToErrored(
+  tickets: SessionLogRow[],
+  lastEntryAt: string,
+  config: SessionLogConfig,
+  cleaned: ProcessedTicket[],
+  errored: ProcessedTicket[]
+): void {
+  const lastEntryTicket = tickets.find(
+    (t) => t.created_at === lastEntryAt && isEntry(t, config)
+  );
+  if (!lastEntryTicket) return;
+  const idx = cleaned.findIndex((p) => p.ticket.id === lastEntryTicket.id);
+  if (idx >= 0) {
+    cleaned.splice(idx, 1);
+    errored.push({
+      ticket: lastEntryTicket,
+      error: "ENTRY_WITHOUT_SAME_DAY_EXIT",
+    });
+  }
+}
+
 /**
  * Options for getCleanedAndErroredTickets.
  * - treatUnclosedEntryAsError: When true, scholars with entry but no exit are
@@ -116,7 +141,19 @@ function processScholarTickets(
 
     if (isEntryTicket) {
       lastActionWasExit = false;
-      if (inRoom) {
+      if (inRoom && lastEntryAt) {
+        const lastEntryDay = getEasternDayKey(lastEntryAt);
+        const newEntryDay = getEasternDayKey(ticket.created_at);
+        if (newEntryDay !== lastEntryDay) {
+          // First entry was previous day: error it, accept new entry
+          moveLastEntryToErrored(tickets, lastEntryAt, config, cleaned, errored);
+          inRoom = true;
+          lastEntryAt = ticket.created_at;
+          cleaned.push({ ticket });
+        } else {
+          errored.push({ ticket, error: "DOUBLE_ENTER" });
+        }
+      } else if (inRoom) {
         errored.push({ ticket, error: "DOUBLE_ENTER" });
       } else {
         inRoom = true;
@@ -137,24 +174,11 @@ function processScholarTickets(
       });
       lastActionWasExit = true;
     } else {
-      const entryDay = getStartOfDayEastern(new Date(lastEntryAt!)).getTime();
-      const exitDay = getStartOfDayEastern(new Date(ticket.created_at)).getTime();
-      const sameDay = entryDay === exitDay;
+      const sameDay =
+        getEasternDayKey(lastEntryAt!) === getEasternDayKey(ticket.created_at);
 
       if (!sameDay) {
-        const lastEntryTicket = tickets.find(
-          (t) => t.created_at === lastEntryAt && isEntry(t, config)
-        );
-        if (lastEntryTicket) {
-          const idx = cleaned.findIndex((p) => p.ticket.id === lastEntryTicket.id);
-          if (idx >= 0) {
-            cleaned.splice(idx, 1);
-            errored.push({
-              ticket: lastEntryTicket,
-              error: "ENTRY_WITHOUT_SAME_DAY_EXIT",
-            });
-          }
-        }
+        moveLastEntryToErrored(tickets, lastEntryAt!, config, cleaned, errored);
         errored.push({
           ticket,
           error: "EXIT_WITHOUT_ENTER",
@@ -172,21 +196,8 @@ function processScholarTickets(
     }
   }
 
-  // Remaining in room = entry without exit catalogued (only error if treating as such)
   if (treatUnclosedEntryAsError && inRoom && lastEntryAt) {
-    const lastEntryTicket = tickets.find(
-      (t) => t.created_at === lastEntryAt && isEntry(t, config)
-    );
-    if (lastEntryTicket) {
-      const idx = cleaned.findIndex((p) => p.ticket.id === lastEntryTicket.id);
-      if (idx >= 0) {
-        cleaned.splice(idx, 1);
-        errored.push({
-          ticket: lastEntryTicket,
-          error: "ENTRY_WITHOUT_SAME_DAY_EXIT",
-        });
-      }
-    }
+    moveLastEntryToErrored(tickets, lastEntryAt, config, cleaned, errored);
   }
 
   return { cleaned, errored };
