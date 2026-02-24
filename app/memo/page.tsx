@@ -231,6 +231,9 @@ export default async function MemoPage({ searchParams }: PageProps) {
       weekLabel={weekLabel}
       currentCampusWeek={currentCampusWeek ?? null}
       selectedWeekNum={weekNum}
+      trafficCardSpan="half"
+      trafficCardTitle="Traffic log"
+      trafficCardDescription={null}
     />
   );
 }
