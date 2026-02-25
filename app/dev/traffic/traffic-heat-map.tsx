@@ -174,10 +174,11 @@ export function TrafficHeatMap({
       <Card>
         <CardHeader>
           <CardTitle>Traffic Heat Map</CardTitle>
-          <CardDescription>
-            Activity by day and time in {slotMinutes}-min increments (Mon–Fri,
-            8am–10pm ET). Unpaired entries assumed until midnight ET.
-          </CardDescription>
+        <CardDescription>
+          Room activity by day and time in {slotMinutes}-min increments (Mon–Fri,
+          8am–10pm ET). Unpaired entries (no exit record) are assumed to stay
+          1 hour unless a later exit is recorded.
+        </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="w-full overflow-auto">
@@ -220,9 +221,9 @@ export function TrafficHeatMap({
       <CardHeader>
         <CardTitle>Traffic Heat Map</CardTitle>
         <CardDescription>
-          Activity by day and time in {slotMinutes}-minute increments (Mon-Fri,
-          8am-10pm ET). Entries without an exit are assumed to stay until
-          midnight Eastern.
+          Room activity by day and time in {slotMinutes}-minute increments (Mon–Fri,
+          8am–10pm ET). Unpaired entries (no exit record) are assumed to stay
+          1 hour unless a later exit is recorded.
         </CardDescription>
       </CardHeader>
       <CardContent>

@@ -1,7 +1,6 @@
-import { getStartOfDayEastern, dateToCampusWeek } from "@/lib/time";
+import { dateToCampusWeek } from "@/lib/time";
 import type { TrafficRow, TrafficSession } from "./types";
 
-const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 const ONE_HOUR_MS = 60 * 60 * 1000;
 
 function isEntry(row: TrafficRow): boolean {
@@ -13,21 +12,16 @@ function isExit(row: TrafficRow): boolean {
 }
 
 /**
- * For an entry with no exit: assume exit = end of that day (midnight ET = start of next day).
- * Uses lib/time for Eastern calendar day.
+ * For an entry with no exit: assume they stayed 1 hour from entry time.
  */
 function getAssumedExitAt(entryAt: string): string {
-  const entryDate = new Date(entryAt);
-  const startOfEntryDayEastern = getStartOfDayEastern(entryDate);
-  const endOfEntryDayEastern = new Date(
-    startOfEntryDayEastern.getTime() + ONE_HOUR_MS
-  );
-  return endOfEntryDayEastern.toISOString();
+  const entryMs = new Date(entryAt).getTime();
+  return new Date(entryMs + ONE_HOUR_MS).toISOString();
 }
 
 /**
  * Build traffic sessions from raw rows. Pairs entry with next exit per uid.
- * Unpaired entries are assumed to stay until end of that day (midnight ET).
+ * Unpaired entries are assumed to stay 1 hour from entry.
  */
 export function getTrafficSessions(rows: TrafficRow[]): TrafficSession[] {
   const byUid = new Map<string, TrafficRow[]>();

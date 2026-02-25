@@ -18,7 +18,7 @@ import { Badge } from "@/components/ui/badge";
 
 export const metadata = {
   title: "Traffic | Dev Tools",
-  description: "Traffic log summary and heat map by campus week (entries; unpaired entries assumed until midnight ET).",
+  description: "Traffic log summary and heat map by campus week (entries; unpaired entries assumed 1 hour).",
 };
 
 /** Slot size options for the heat map (minutes). Defined here so the server component does not depend on client-component exports. */
@@ -79,7 +79,7 @@ export default async function DevTrafficPage({ searchParams }: PageProps) {
         <h1 className="text-2xl font-bold">Traffic</h1>
         <p className="text-muted-foreground mt-1">
           Entry/exit from <code className="rounded bg-muted px-1">public.traffic</code>.
-          Unpaired entries assumed until midnight Eastern (rest of day).
+          Unpaired entries assumed 1 hour unless a later exit is recorded.
         </p>
       </div>
 

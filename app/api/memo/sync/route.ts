@@ -6,6 +6,7 @@ import {
   syncStudySessionRecordsForWeekAllUids,
 } from "@/lib/server/session-records";
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 
 /**
  * POST /api/memo/sync
@@ -53,6 +54,7 @@ export async function POST(request: Request) {
         syncFrontDeskRecordsForWeek(weekNum),
         syncStudySessionRecordsForWeek(weekNum),
       ]);
+      revalidatePath("/memo", "page");
       return NextResponse.json({
         data: {
           mode: "light",
@@ -67,6 +69,7 @@ export async function POST(request: Request) {
       syncFrontDeskRecordsForWeekAllUids(weekNum),
       syncStudySessionRecordsForWeekAllUids(weekNum),
     ]);
+    revalidatePath("/memo", "page");
     return NextResponse.json({
       data: {
         mode: "heavy",

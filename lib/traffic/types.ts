@@ -16,6 +16,6 @@ export interface TrafficSession {
   entryAt: string;
   exitAt: string;
   durationMs: number;
-  /** True when exit was assumed (no exit record; assumed rest of day until midnight ET) */
+  /** True when exit was assumed (no exit record; assumed 1 hour from entry) */
   assumedExit?: boolean;
 }
