@@ -2,7 +2,7 @@
  * Traffic server module. For client-safe types and pure utilities, use @/lib/traffic.
  */
 
-import { campusWeekToDateRange } from "@/lib/time";
+import { campusWeekToDateRange, dateToCampusWeek } from "@/lib/time";
 import {
   getTrafficSessions,
   getEntryCountByWeek,
@@ -70,8 +70,19 @@ export async function getTrafficEntryCountsForWeeks(
     new Date(ranges[0].endDate.getTime() + ONE_DAY_MS - 1)
   );
   const rows = await fetchTrafficLogs({ startDate, endDate });
-  return weekNumbers.map((weekNumber) => ({
+  const currentCampusWeek = dateToCampusWeek(new Date());
+  const result: WeekEntryCount[] = weekNumbers.map((weekNumber) => ({
     weekNumber,
     entryCount: getEntryCountByWeek(rows, weekNumber),
   }));
+  // Use a fresh fetch for the current week so the line chart matches "Entry tickets this week" (no stale batch/cache).
+  if (
+    currentCampusWeek != null &&
+    weekNumbers.includes(currentCampusWeek)
+  ) {
+    const freshCount = await getTrafficEntryCountForWeek(currentCampusWeek);
+    const idx = result.findIndex((r) => r.weekNumber === currentCampusWeek);
+    if (idx >= 0) result[idx] = { weekNumber: currentCampusWeek, entryCount: freshCount };
+  }
+  return result;
 }
