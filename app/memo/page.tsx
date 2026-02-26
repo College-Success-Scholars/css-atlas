@@ -19,6 +19,9 @@ import {
   getTrafficEntryCountForWeek,
   getTrafficSessionsForWeek,
 } from "@/lib/server/traffic";
+import {
+  getMcfFormLogsByUidAndWeekWithLate,
+} from "@/lib/server/form-logs";
 import { MemoContent } from "./memo-content";
 import type { MemoScholarRow, MemoTLRow, MemoPieData } from "./memo-content";
 import type { ScholarWithCompletedSession } from "@/lib/session-logs";
@@ -32,9 +35,9 @@ function isScholar(role: string | null): boolean {
   return (role ?? "").toLowerCase() === "scholar";
 }
 
-function isTeamLeader(role: string | null): boolean {
-  const r = (role ?? "").toLowerCase();
-  return r === "team_leader" || r === "tl" || r === "team leader";
+function isTeamLeader(programRole: string | null): boolean {
+  const r = (programRole ?? "").toLowerCase();
+  return r !== "scholar";
 }
 
 function hasRequiredHours(u: MemoUserRow): boolean {
@@ -219,12 +222,49 @@ export default async function MemoPage({ searchParams }: PageProps) {
     },
   };
 
-  const teamLeaders: MemoTLRow[] = allUsers
-    .filter((u) => isTeamLeader(u.program_role))
-    .map((u) => ({
+  // Team leaders: non-scholars from users table
+  const tlUsers = allUsers.filter((u) => isTeamLeader(u.program_role));
+
+  // MCF: fetch per TL by uid + week (DB filters mentor_uid or mentee_uid = TL uid)
+  const mcfByTlUid = new Map<
+    string,
+    { count: number; hasLate: boolean; latestAt: string | null }
+  >();
+  await Promise.all(
+    tlUsers.map(async (u) => {
+      const rows = await getMcfFormLogsByUidAndWeekWithLate(u.uid, weekNum);
+      const latestAt =
+        rows.length > 0 ? rows[rows.length - 1].created_at : null;
+      mcfByTlUid.set(u.uid, {
+        count: rows.length,
+        hasLate: rows.some((r) => r.isLate),
+        latestAt,
+      });
+    })
+  );
+
+  const MCF_REQUIRED_PER_WEEK = 1;
+  const teamLeaders: MemoTLRow[] = tlUsers.map((u) => {
+    const mcf = mcfByTlUid.get(u.uid) ?? {
+      count: 0,
+      hasLate: false,
+      latestAt: null,
+    };
+    const mcf_required = MCF_REQUIRED_PER_WEEK;
+    const mcf_pct =
+      mcf_required > 0
+        ? Math.round((mcf.count / mcf_required) * 100)
+        : null;
+    return {
       uid: u.uid,
       name: [u.first_name, u.last_name].filter(Boolean).join(" ").trim() || u.uid,
-    }));
+      mcf_completed: mcf.count,
+      mcf_required: mcf_required,
+      mcf_late: mcf.hasLate,
+      mcf_pct,
+      mcf_latest_at: mcf.latestAt ?? endDate?.toISOString() ?? "",
+    };
+  });
 
   const weekLabel =
     range != null

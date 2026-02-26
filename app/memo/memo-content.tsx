@@ -163,6 +163,12 @@ export type MemoScholarRow = {
 export type MemoTLRow = {
   uid: string;
   name: string;
+  mcf_completed: number;
+  mcf_required: number;
+  mcf_late: boolean;
+  mcf_pct: number | null;
+  /** ISO date string of the most recent MCF entry (for column sort). */
+  mcf_latest_at: string | null;
 };
 
 export type MemoPieData = {
@@ -186,7 +192,8 @@ function formatRequiredAsHours(mins: number): string {
   return `${mins / 60}h`;
 }
 
-function getPctBgClass(pct: number | null): string {
+function getPctBgClass(pct: number | null, isLate?: boolean): string {
+  if (isLate === true) return "bg-yellow-500/20";
   if (pct == null) return "bg-muted/50";
   if (pct >= 90) return "bg-green-500/20";
   if (pct >= 75) return "bg-yellow-500/20";
@@ -216,6 +223,7 @@ type ProgressCellTimeProps = {
  * @property required - Required number (null or 0 means no requirement).
  * @property label - Short label for the metric, used in the tooltip.
  * @property unitLabel - Optional unit name (e.g. "forms") for display: "3 / 5 forms 60%".
+ * @property isLate - When true, cell is shown with yellow background (form submitted after deadline).
  */
 type ProgressCellCountProps = {
   mode: "count";
@@ -223,6 +231,7 @@ type ProgressCellCountProps = {
   required: number | null;
   label: string;
   unitLabel?: string;
+  isLate?: boolean;
 };
 
 /** Union of all ProgressCell prop variants. */
@@ -243,13 +252,16 @@ function ProgressCell(props: ProgressCellProps) {
   const required = props.mode === "time" ? props.required : props.required;
   const hasReq = required != null && required > 0;
   const pct = hasReq ? Math.round((effectiveValue / required) * 100) : null;
-  const bgClass = getPctBgClass(pct);
+  const isLate = props.mode === "count" ? props.isLate : false;
+  const bgClass = getPctBgClass(pct, isLate);
 
   const titleSuffix =
     props.mode === "time" && props.excuseMin > 0
       ? ` Includes ${props.excuseMin} min excused.`
-      : "";
-  const title = `${props.label}. Green: ≥90%, Yellow: 75–90%, Red: <75%.${titleSuffix}`;
+      : props.mode === "count" && props.isLate
+        ? " Submitted after deadline (late)."
+        : "";
+  const title = `${props.label}. Green: ≥90%, Yellow: 75–90% or late, Red: <75%.${titleSuffix}`;
 
   return (
     <div
@@ -391,6 +403,28 @@ function getScholarColumns(): ScholarDataTableColumn<MemoScholarRow>[] {
           required={row.ss_required}
           excuseMin={row.ss_excuse_min}
           label="SS"
+        />
+      ),
+    },
+  ];
+}
+
+function getTLFormColumns(): ScholarDataTableColumn<MemoTLRow>[] {
+  return [
+    {
+      id: "mcf-progress",
+      header: "MCF",
+      field: "mcf_pct",
+      sortable: true,
+      sortField: "mcf_latest_at",
+      renderCell: (row) => (
+        <ProgressCell
+          mode="count"
+          completed={row.mcf_completed}
+          required={row.mcf_required}
+          label="MCF"
+          unitLabel="form"
+          isLate={row.mcf_late}
         />
       ),
     },
@@ -612,26 +646,29 @@ export function MemoContent({
         </CardContent>
       </Card>
 
-      {/* TLs table */}
+      {/* Team leaders forms table (same layout as Scholar hours card) */}
       <Card>
         <CardHeader>
           <CardTitle>Team leaders</CardTitle>
           <CardDescription>
-            TLs are listed separately; they do not have FD/SS hour requirements in this view.
+            Forms (MCF) progress for the selected week. Yellow = form submitted after deadline.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          {teamLeaders.length === 0 ? (
-            <p className="text-muted-foreground text-sm">No team leaders.</p>
-          ) : (
-            <ScholarDataTable<MemoTLRow>
-              data={teamLeaders}
-              rowKeyField="uid"
-              nameColumn={{ field: "name", header: "Name", sortable: true }}
-              uidColumn={{ field: "uid", header: "UID", sortable: true }}
-              emptyMessage="No team leaders"
-            />
-          )}
+        <CardContent className="flex flex-col gap-6">
+          <CollapsibleTableSection title="Forms (MCF)" defaultOpen={true}>
+            {teamLeaders.length === 0 ? (
+              <p className="text-muted-foreground text-sm">No team leaders.</p>
+            ) : (
+              <ScholarDataTable<MemoTLRow>
+                data={teamLeaders}
+                rowKeyField="uid"
+                nameColumn={{ field: "name", header: "Name", sortable: true }}
+                uidColumn={{ field: "uid", header: "UID", sortable: true }}
+                columns={getTLFormColumns()}
+                emptyMessage="No team leaders"
+              />
+            )}
+          </CollapsibleTableSection>
         </CardContent>
       </Card>
     </div>

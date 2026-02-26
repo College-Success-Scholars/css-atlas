@@ -93,6 +93,7 @@ export type MemoUserRow = {
   last_name: string | null;
   cohort: number | null;
   program_role: string | null;
+  app_role: string | null;
   fd_required: number | null;
   ss_required: number | null;
 };
@@ -102,7 +103,7 @@ export async function fetchAllUsersForMemo(): Promise<MemoUserRow[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("users")
-    .select("uid, first_name, last_name, cohort, program_role, fd_required, ss_required")
+    .select("uid, first_name, last_name, cohort, program_role, app_role, fd_required, ss_required")
     .not("uid", "is", null);
   if (error) throw error;
   return (data ?? []).map((r) => ({
@@ -111,6 +112,27 @@ export async function fetchAllUsersForMemo(): Promise<MemoUserRow[]> {
     last_name: r.last_name ?? null,
     cohort: r.cohort != null ? Number(r.cohort) : null,
     program_role: r.program_role ?? null,
+    app_role: r.app_role ?? null,
+    fd_required: r.fd_required != null ? Number(r.fd_required) : null,
+    ss_required: r.ss_required != null ? Number(r.ss_required) : null,
+  }));
+}
+
+/** Fetch all non-scholars from public.users (team leaders and other roles). Server-only. */
+export async function fetchTeamLeaders(): Promise<MemoUserRow[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("users")
+    .select("uid, first_name, last_name, cohort, program_role, app_role, fd_required, ss_required")
+    .or("program_role.neq.scholar,program_role.is.null");
+  if (error) throw error;
+  return (data ?? []).map((r) => ({
+    uid: String(r.uid),
+    first_name: r.first_name ?? null,
+    last_name: r.last_name ?? null,
+    cohort: r.cohort != null ? Number(r.cohort) : null,
+    program_role: r.program_role ?? null,
+    app_role: r.app_role ?? null,
     fd_required: r.fd_required != null ? Number(r.fd_required) : null,
     ss_required: r.ss_required != null ? Number(r.ss_required) : null,
   }));
