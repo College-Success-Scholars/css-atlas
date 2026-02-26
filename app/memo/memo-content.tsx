@@ -193,35 +193,83 @@ function getPctBgClass(pct: number | null): string {
   return "bg-red-500/20";
 }
 
-function ProgressCell({
-  total,
-  required,
-  excuseMin,
-  label,
-}: {
+/**
+ * Props for the time-based progress mode.
+ * @property mode - Must be `"time"` for this variant.
+ * @property total - Total minutes completed.
+ * @property required - Required minutes (null or 0 means no requirement).
+ * @property excuseMin - Minutes to add to total as excused (e.g. excused absence).
+ * @property label - Short label for the metric (e.g. "FD", "SS"), used in the tooltip.
+ */
+type ProgressCellTimeProps = {
+  mode: "time";
   total: number;
   required: number | null;
   excuseMin: number;
   label: string;
-}) {
-  const effectiveTotal = total + excuseMin;
+};
+
+/**
+ * Props for the count-based progress mode (e.g. forms, evaluations).
+ * @property mode - Must be `"count"` for this variant.
+ * @property completed - Number of items completed.
+ * @property required - Required number (null or 0 means no requirement).
+ * @property label - Short label for the metric, used in the tooltip.
+ * @property unitLabel - Optional unit name (e.g. "forms") for display: "3 / 5 forms 60%".
+ */
+type ProgressCellCountProps = {
+  mode: "count";
+  completed: number;
+  required: number | null;
+  label: string;
+  unitLabel?: string;
+};
+
+/** Union of all ProgressCell prop variants. */
+type ProgressCellProps = ProgressCellTimeProps | ProgressCellCountProps;
+
+/**
+ * Pill-style cell showing progress toward a requirement with color by percentage
+ * (green ≥90%, yellow 75–90%, red &lt;75%). Supports time-based progress (e.g. front desk
+ * hours) or count-based progress (e.g. forms completed).
+ *
+ * @param props - Either time props (`mode: "time"`, total, required, excuseMin, label)
+ *                or count props (`mode: "count"`, completed, required, label, optional unitLabel).
+ * @returns A div with formatted value/required and percentage, and a tooltip explaining the thresholds.
+ */
+function ProgressCell(props: ProgressCellProps) {
+  const effectiveValue =
+    props.mode === "time" ? props.total + props.excuseMin : props.completed;
+  const required = props.mode === "time" ? props.required : props.required;
   const hasReq = required != null && required > 0;
-  const pct = hasReq ? Math.round((effectiveTotal / required) * 100) : null;
+  const pct = hasReq ? Math.round((effectiveValue / required) * 100) : null;
   const bgClass = getPctBgClass(pct);
+
+  const titleSuffix =
+    props.mode === "time" && props.excuseMin > 0
+      ? ` Includes ${props.excuseMin} min excused.`
+      : "";
+  const title = `${props.label}. Green: ≥90%, Yellow: 75–90%, Red: <75%.${titleSuffix}`;
 
   return (
     <div
       className={`flex items-center gap-2 rounded px-2 py-1 text-xs ${bgClass}`}
-      title={`${label}. Green: ≥90%, Yellow: 75–90%, Red: <75%.${excuseMin > 0 ? ` Includes ${excuseMin} min excused.` : ""}`}
+      title={title}
     >
       {hasReq ? (
         <>
           <span>
             <span className="whitespace-pre-line font-semibold">
-              {formatMinutesToHoursAndMinutes(effectiveTotal)}
+              {props.mode === "time"
+                ? formatMinutesToHoursAndMinutes(effectiveValue)
+                : effectiveValue}
             </span>
             <span className="text-muted-foreground"> / </span>
-            <span className="text-xs">{formatRequiredAsHours(required)}</span>
+            <span className="text-xs">
+              {props.mode === "time"
+                ? formatRequiredAsHours(required)
+                : `${required}${props.unitLabel ? ` ${props.unitLabel}` : ""}`}
+            </span>
           </span>
           <span className="text-xs font-bold text-black dark:text-white">{pct}%</span>
         </>
@@ -322,6 +370,7 @@ function getScholarColumns(): ScholarDataTableColumn<MemoScholarRow>[] {
       sortField: "fd_pct",
       renderCell: (row) => (
         <ProgressCell
+          mode="time"
           total={row.fd_total}
           required={row.fd_required}
           excuseMin={row.fd_excuse_min}
@@ -337,6 +386,7 @@ function getScholarColumns(): ScholarDataTableColumn<MemoScholarRow>[] {
       sortField: "ss_pct",
       renderCell: (row) => (
         <ProgressCell
+          mode="time"
           total={row.ss_total}
           required={row.ss_required}
           excuseMin={row.ss_excuse_min}
