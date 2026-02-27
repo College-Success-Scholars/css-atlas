@@ -15,7 +15,7 @@ import {
   buildTeamLeaderFormStatsForWeek,
 } from "@/lib/server/form-logs";
 import { Badge } from "@/components/ui/badge";
-import { FormLogsTestClient } from "./form-logs-test-client";
+import { FormCompletionPieCharts } from "./form-completion-pie-charts";
 import { TeamLeadersTable } from "./team-leaders-table";
 
 export const metadata = {
@@ -63,6 +63,25 @@ export default async function FormLogsTestPage({ searchParams }: PageProps) {
     wplRowsWithLate
   );
 
+  // Overall completion stats across all team leaders
+  const overall = teamLeaderRows.reduce(
+    (acc, row) => ({
+      whaf_completed: acc.whaf_completed + row.whaf_completed,
+      whaf_required: acc.whaf_required + row.whaf_required,
+      mcf_completed: acc.mcf_completed + row.mcf_completed,
+      mcf_required: acc.mcf_required + row.mcf_required,
+      wpl_completed: acc.wpl_completed + row.wpl_completed,
+      wpl_required: acc.wpl_required + row.wpl_required,
+    }),
+    {
+      whaf_completed: 0,
+      whaf_required: 0,
+      mcf_completed: 0,
+      mcf_required: 0,
+      wpl_completed: 0,
+      wpl_required: 0,
+    }
+  );
   return (
     <div className="container mx-auto max-w-4xl space-y-8 py-12">
       <div className="flex items-center gap-4">
@@ -144,15 +163,11 @@ export default async function FormLogsTestPage({ searchParams }: PageProps) {
             17:00 ET (week {weekNum}).
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex flex-col gap-6">
+          <FormCompletionPieCharts overall={overall} />
           <TeamLeadersTable rows={teamLeaderRows} />
         </CardContent>
       </Card>
-
-      <div>
-        <h2 className="text-lg font-semibold mb-4">Try it</h2>
-        <FormLogsTestClient />
-      </div>
     </div>
   );
 }

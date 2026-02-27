@@ -12,6 +12,15 @@ export function TeamLeadersTable({
 }: {
   rows: TeamLeaderFormStatsRow[];
 }) {
+  const programRoleOrder = [
+    "Program Coordinator",
+    "President",
+    "Vice President",
+    "E-Board Chair",
+    "Team Leader II",
+    "Team Leader I",
+  ];
+
   const columns: ScholarDataTableColumn<TeamLeaderFormStatsRow>[] = [
     {
       id: "program_role",
@@ -20,6 +29,11 @@ export function TeamLeadersTable({
       field: "program_role",
       cellClassName: "text-muted-foreground",
       sortable: true,
+      getSortValue: (row) => {
+        const role = row.program_role ?? "";
+        const idx = programRoleOrder.indexOf(role);
+        return idx >= 0 ? idx : programRoleOrder.length;
+      },
     },
     {
       id: "whaf-progress",

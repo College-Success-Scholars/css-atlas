@@ -40,6 +40,8 @@ export interface ScholarDataTableColumn<T> {
   sortable?: boolean;
   /** When set, render this instead of the field value (e.g. button, combined content). */
   renderCell?: (row: T) => React.ReactNode;
+  /** When set, use this value for sorting instead of the field/sortField value (e.g. custom role order). */
+  getSortValue?: (row: T) => string | number;
 }
 
 /**
@@ -105,6 +107,7 @@ function getCellDisplay<T>(row: T, col: ScholarDataTableColumn<T>): string {
 }
 
 function getSortValue<T>(row: T, col: ScholarDataTableColumn<T>): string | number {
+  if (col.getSortValue) return col.getSortValue(row);
   const key = col.sortField ?? col.field;
   const val = row[key];
   if (typeof val === "number") return val;
