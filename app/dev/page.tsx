@@ -54,10 +54,22 @@ export default function DevPage() {
           Session Records Test →
         </Link>
         <Link
+          href="/dev/traffic"
+          className="text-primary hover:underline text-sm font-medium"
+        >
+          Traffic →
+        </Link>
+        <Link
           href="/dev/time"
           className="text-primary hover:underline text-sm font-medium"
         >
           Campus Time Test →
+        </Link>
+        <Link
+          href="/dev/form-logs"
+          className="text-primary hover:underline text-sm font-medium"
+        >
+          Form Logs Test →
         </Link>
       </div>
 
