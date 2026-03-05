@@ -4,6 +4,7 @@ import type { User } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import type { UserProfile } from "./types";
+import { APP_ROLE_ORDER } from "./types";
 
 /**
  * Especially important if using Fluid compute: Don't put this client in a
@@ -105,6 +106,22 @@ export async function requireUser(): Promise<User> {
   return user;
 }
 
+function hasRoleAtLeast(role: string | null, minRole: "team_leader" | "developer"): boolean {
+  const idx = APP_ROLE_ORDER.indexOf(role as (typeof APP_ROLE_ORDER)[number]);
+  const minIdx = APP_ROLE_ORDER.indexOf(minRole);
+  return idx >= 0 && idx >= minIdx;
+}
+
+/**
+ * Returns the current user if they have team_leader access or higher, or null.
+ * Hierarchy: null < team_leader < developer. Use for routes that require team_leader or developer.
+ */
+export async function getTeamLeaderOrAboveUser(): Promise<User | null> {
+  const { user, profile } = await getCurrentUserWithProfile();
+  if (!user) return null;
+  return hasRoleAtLeast(profile?.app_role ?? null, "team_leader") ? user : null;
+}
+
 /**
  * Returns the current user if they have developer access, or null.
  * Developer access is determined by profile.app_role === 'developer' in public.users.
@@ -118,14 +135,26 @@ export async function getDeveloperUser(): Promise<User | null> {
 }
 
 /**
+ * Returns the current user or redirects to /dashboard. Use for routes that require team_leader or higher.
+ * Redirects if the user is not team_leader or developer.
+ */
+export async function requireTeamLeaderOrAbove(): Promise<User> {
+  const user = await getTeamLeaderOrAboveUser();
+  if (!user) {
+    redirect("/dashboard");
+  }
+  return user;
+}
+
+/**
  * Returns the current user or redirects to /dashboard. Use for routes that require developer access only.
  * Redirects to dashboard if the user is not a developer.
  */
 export async function requireDeveloper(): Promise<User | null> {
   const user = await getDeveloperUser();
   if (!user) {
-    console.log("User is not a developer");
     
+    redirect("/dashboard");
   }
   return user;
 }

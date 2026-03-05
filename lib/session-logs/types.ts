@@ -3,8 +3,8 @@
  * The minimal row shape allows different tables to be used interchangeably.
  */
 
-/** Eastern timezone for all date logic (handles EST/EDT) */
-export const EASTERN_TIMEZONE = "America/New_York";
+/** Eastern timezone for all date logic (handles EST/EDT). Re-exported from lib/time. */
+export { EASTERN_TIMEZONE } from "@/lib/time";
 
 /**
  * Session types - study session vs front desk.
@@ -112,4 +112,26 @@ export interface ScholarWithCompletedSession {
   durationMs: number;
   /** Session type when filtered */
   sessionType?: string | null;
+}
+
+/** Supabase row shape for front_desk_logs (for server-side use). */
+export interface FrontDeskLogRow {
+  id: string;
+  created_at: string;
+  rep_name: string | null;
+  scholar_uid: string | null;
+  action_type: string | null;
+  session_type: string | null;
+  submitted_by_email: string | null;
+}
+
+/** Supabase row shape for study_session_logs (for server-side use). */
+export interface StudySessionLogRow {
+  id: string;
+  created_at: string;
+  rep_name: string | null;
+  scholar_uid: string | null;
+  action_type: string | null;
+  session_type: string | null;
+  submitted_by_email: string | null;
 }

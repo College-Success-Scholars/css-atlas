@@ -6,8 +6,8 @@ import {
 
 export const EASTERN_TIMEZONE = "America/New_York";
 
-/** One day in ms */
-const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+/** One day in ms. Exported for use by deadlines and other time-based logic. */
+export const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
  * Parse "YYYY-MM-DD" as midnight Eastern (start of that calendar day in America/New_York).
@@ -40,8 +40,9 @@ const WINTER_END = parseEasternDate(WINTER_BREAK_LAST_DAY);
 
 /**
  * Get day of week in Eastern (0=Sun, 1=Mon, ..., 6=Sat).
+ * Exported for use by session-records/weekly-minutes and other callers.
  */
-function getEasternDayOfWeek(d: Date): number {
+export function getEasternDayOfWeek(d: Date): number {
   const formatter = new Intl.DateTimeFormat("en-US", {
     timeZone: EASTERN_TIMEZONE,
     weekday: "short",
@@ -59,8 +60,11 @@ function getEasternDayOfWeek(d: Date): number {
   return map[day] ?? 0;
 }
 
-/** Truncate a Date to its Eastern calendar day (midnight Eastern). */
-function toEasternDay(d: Date): Date {
+/**
+ * Truncate a Date to its Eastern calendar day (midnight Eastern).
+ * Exported as getStartOfDayEastern for use by callers that need "today since 12am" in Eastern.
+ */
+export function getStartOfDayEastern(d: Date): Date {
   const formatter = new Intl.DateTimeFormat("en-US", {
     timeZone: EASTERN_TIMEZONE,
     year: "numeric",
@@ -74,6 +78,11 @@ function toEasternDay(d: Date): Date {
   return parseEasternDate(
     `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`
   );
+}
+
+/** Internal alias for use in this file. */
+function toEasternDay(d: Date): Date {
+  return getStartOfDayEastern(d);
 }
 
 /** Days back to reach Monday from a given Eastern day (Monday=1). */

@@ -1,3 +1,4 @@
+import { getStartOfDayEastern } from "@/lib/time";
 import {
   type SessionLogRow,
   type SessionLogConfig,
@@ -21,6 +22,31 @@ function isExit(row: SessionLogRow, config: SessionLogConfig): boolean {
   return (row.action_type ?? "").trim() === config.exitAction;
 }
 
+function getEasternDayKey(createdAt: string): number {
+  return getStartOfDayEastern(new Date(createdAt)).getTime();
+}
+
+function moveLastEntryToErrored(
+  tickets: SessionLogRow[],
+  lastEntryAt: string,
+  config: SessionLogConfig,
+  cleaned: ProcessedTicket[],
+  errored: ProcessedTicket[]
+): void {
+  const lastEntryTicket = tickets.find(
+    (t) => t.created_at === lastEntryAt && isEntry(t, config)
+  );
+  if (!lastEntryTicket) return;
+  const idx = cleaned.findIndex((p) => p.ticket.id === lastEntryTicket.id);
+  if (idx >= 0) {
+    cleaned.splice(idx, 1);
+    errored.push({
+      ticket: lastEntryTicket,
+      error: "ENTRY_WITHOUT_SAME_DAY_EXIT",
+    });
+  }
+}
+
 /**
  * Options for getCleanedAndErroredTickets.
  * - treatUnclosedEntryAsError: When true, scholars with entry but no exit are
@@ -34,10 +60,12 @@ export interface CleanedAndErroredOptions {
 }
 
 /**
- * Core utility: Categorize all tickets by scholar as cleaned or errored.
+ * Categorize all tickets by scholar as cleaned or errored. Use after fetching log rows;
+ * pass treatUnclosedEntryAsError: true for closed-period analysis, and optional sessionType
+ * to filter (e.g. SESSION_TYPE_STUDY or SESSION_TYPE_FRONT_DESK).
+ *
  * Handles: double exit, double enter, exit before enter, exit without enter,
  * and entry without same-day exit (when treatUnclosedEntryAsError is true).
- *
  * Table-agnostic: works on any array of rows matching SessionLogRow.
  */
 function filterBySessionType(
@@ -115,7 +143,19 @@ function processScholarTickets(
 
     if (isEntryTicket) {
       lastActionWasExit = false;
-      if (inRoom) {
+      if (inRoom && lastEntryAt) {
+        const lastEntryDay = getEasternDayKey(lastEntryAt);
+        const newEntryDay = getEasternDayKey(ticket.created_at);
+        if (newEntryDay !== lastEntryDay) {
+          // First entry was previous day: error it, accept new entry
+          moveLastEntryToErrored(tickets, lastEntryAt, config, cleaned, errored);
+          inRoom = true;
+          lastEntryAt = ticket.created_at;
+          cleaned.push({ ticket });
+        } else {
+          errored.push({ ticket, error: "DOUBLE_ENTER" });
+        }
+      } else if (inRoom) {
         errored.push({ ticket, error: "DOUBLE_ENTER" });
       } else {
         inRoom = true;
@@ -136,31 +176,30 @@ function processScholarTickets(
       });
       lastActionWasExit = true;
     } else {
+      const sameDay =
+        getEasternDayKey(lastEntryAt!) === getEasternDayKey(ticket.created_at);
+
+      if (!sameDay) {
+        moveLastEntryToErrored(tickets, lastEntryAt!, config, cleaned, errored);
+        errored.push({
+          ticket,
+          error: "EXIT_WITHOUT_ENTER",
+          pairedEntryAt: lastEntryAt ?? undefined,
+        });
+      } else {
+        cleaned.push({
+          ticket,
+          pairedEntryAt: lastEntryAt ?? undefined,
+        });
+      }
       lastActionWasExit = true;
-      cleaned.push({
-        ticket,
-        pairedEntryAt: lastEntryAt ?? undefined,
-      });
       inRoom = false;
       lastEntryAt = null;
     }
   }
 
-  // Remaining in room = entry without exit catalogued (only error if treating as such)
   if (treatUnclosedEntryAsError && inRoom && lastEntryAt) {
-    const lastEntryTicket = tickets.find(
-      (t) => t.created_at === lastEntryAt && isEntry(t, config)
-    );
-    if (lastEntryTicket) {
-      const idx = cleaned.findIndex((p) => p.ticket.id === lastEntryTicket.id);
-      if (idx >= 0) {
-        cleaned.splice(idx, 1);
-        errored.push({
-          ticket: lastEntryTicket,
-          error: "ENTRY_WITHOUT_SAME_DAY_EXIT",
-        });
-      }
-    }
+    moveLastEntryToErrored(tickets, lastEntryAt, config, cleaned, errored);
   }
 
   return { cleaned, errored };
@@ -174,9 +213,8 @@ export interface ScholarsInRoomOptions {
 }
 
 /**
- * Get scholars currently in the room (valid entry without exit).
- * Uses getCleanedAndErroredTickets - pass only the cleaned tickets that are entries
- * and have no following exit in the same scholar's sequence.
+ * Get scholars currently in the room (valid entry without exit). Pass rows and optional
+ * asOf (default now) and sessionType. Only considers tickets from the asOf day (since 12am Eastern).
  */
 export function getScholarsCurrentlyInRoom(
   rows: SessionLogRow[],
@@ -184,7 +222,11 @@ export function getScholarsCurrentlyInRoom(
   options: ScholarsInRoomOptions = {}
 ): ScholarInRoom[] {
   const { sessionType, asOf = new Date() } = options;
-  const { byScholarUid } = getCleanedAndErroredTickets(rows, config, {
+  const startOfTodayEastern = getStartOfDayEastern(asOf).getTime();
+  const rowsFromToday = rows.filter(
+    (r) => new Date(r.created_at).getTime() >= startOfTodayEastern
+  );
+  const { byScholarUid } = getCleanedAndErroredTickets(rowsFromToday, config, {
     sessionType,
   });
   const result: ScholarInRoom[] = [];
@@ -254,7 +296,8 @@ export interface ValidEntryExitOptions {
 }
 
 /**
- * Get scholars with valid entry-exit pairs and their session duration.
+ * Get scholars with valid entry-exit pairs and their session duration. Use for tables or
+ * as input to getDoubleEntries or computeWeeklyMinutesByUid. Pass optional sessionType to filter.
  */
 export function getScholarsWithValidEntryExit(
   rows: SessionLogRow[],

@@ -33,8 +33,13 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-        suppressHydrationWarning
       >
+        {/* Suppress Next.js 15 dev-only "params are being enumerated" warning from internal tooling */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){var f=function(msg){return msg&&String(msg).includes("params are being enumerated");};var e=console.error,w=console.warn;console.error=function(){if(f(arguments[0]))return;e.apply(console,arguments);};console.warn=function(){if(f(arguments[0]))return;w.apply(console,arguments);};})();`,
+          }}
+        />
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
