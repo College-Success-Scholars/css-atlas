@@ -14,9 +14,9 @@ import {
 } from "@/components/scholar-data-table";
 import {
   dateToCampusWeek,
-  campusWeekToDateRange,
   formatMinutesToHoursAndMinutes,
 } from "@/lib/time";
+import { CampusWeekCard } from "@/components/campus-week-card";
 import {
   Card,
   CardContent,
@@ -478,7 +478,6 @@ export default function SessionRecordsTestPage() {
     effectiveWeek !== ""
       ? Math.max(1, Math.min(99, parseInt(effectiveWeek, 10) || 1))
       : null;
-  const range = weekNumForRange != null ? campusWeekToDateRange(weekNumForRange) : null;
 
   const fetchRecord = useCallback(async (uid: number, week: number) => {
     setRecordRequested(true);
@@ -803,49 +802,11 @@ export default function SessionRecordsTestPage() {
         </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Time</CardTitle>
-          <CardDescription>
-            Current campus week from lib/time. Use week links or forms below.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-wrap items-center gap-2 text-sm">
-            <span className="text-muted-foreground">Current campus week:</span>
-            <Badge variant="secondary">{currentCampusWeek ?? "—"}</Badge>
-          </div>
-          <div>
-            <p className="text-muted-foreground text-sm mb-2">Quick week links:</p>
-            <div className="flex flex-wrap gap-1">
-              {Array.from({ length: 25 }, (_, i) => i + 1).map((w) => (
-                <Link
-                  key={w}
-                  href={`/dev/session-records?week=${w}${uidParam ? `&uid=${uidParam}` : ""}`}
-                  className="inline-flex h-8 min-w-8 items-center justify-center rounded-md px-2 text-sm font-medium transition-colors bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
-                >
-                  {w}
-                </Link>
-              ))}
-            </div>
-          </div>
-          {range && (
-            <div className="rounded-md border bg-muted/50 p-3 text-sm">
-              <span className="font-medium">Week {range.weekNumber}:</span>{" "}
-              <span className="text-muted-foreground">
-                {range.startDate.toLocaleDateString("en-US", {
-                  timeZone: "America/New_York",
-                })}{" "}
-                –{" "}
-                {range.endDate.toLocaleDateString("en-US", {
-                  timeZone: "America/New_York",
-                })}{" "}
-                (ET)
-              </span>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <CampusWeekCard
+        basePath="/dev/session-records"
+        additionalSearchParams={uidParam ? { uid: uidParam } : undefined}
+        selectedWeek={weekNumForRange}
+      />
 
       <Card>
         <CardHeader>

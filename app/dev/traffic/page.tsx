@@ -4,9 +4,10 @@ import {
   getTrafficEntryCountForWeek,
   getTrafficEntryCountsForWeeks,
 } from "@/lib/server/traffic";
-import { dateToCampusWeek, campusWeekToDateRange } from "@/lib/time";
+import { dateToCampusWeek } from "@/lib/time";
 import { TrafficHeatMapSection } from "./traffic-heat-map-section";
 import { TrafficWeeklyLineChartBySemester } from "./traffic-weekly-line-chart";
+import { CampusWeekCard } from "@/components/campus-week-card";
 import {
   Card,
   CardContent,
@@ -14,7 +15,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 
 export const metadata = {
   title: "Traffic | Dev Tools",
@@ -46,17 +46,6 @@ export default async function DevTrafficPage({ searchParams }: PageProps) {
         : 1;
   const slotMinutes = parseSlotMinutes(incrementParam);
 
-  const range = campusWeekToDateRange(weekNum);
-
-  function linkUrl(opts: { week?: number; increment?: number }): string {
-    const w = opts.week ?? weekNum;
-    const inc = opts.increment ?? slotMinutes;
-    const sp = new URLSearchParams();
-    sp.set("week", String(w));
-    sp.set("increment", String(inc));
-    return `/dev/traffic?${sp.toString()}`;
-  }
-
   const weekNumbers = Array.from({ length: 25 }, (_, i) => i + 1);
   const [entryCount, sessions, weeklyData] = await Promise.all([
     getTrafficEntryCountForWeek(weekNum),
@@ -83,56 +72,11 @@ export default async function DevTrafficPage({ searchParams }: PageProps) {
         </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Week selector</CardTitle>
-          <CardDescription>
-            Campus week from <code className="rounded bg-muted px-1">lib/time</code> (academic calendar).
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-wrap items-center gap-2 text-sm">
-            <span className="text-muted-foreground">Current campus week:</span>
-            <Badge variant="secondary">
-              {currentCampusWeek ?? "—"}
-            </Badge>
-          </div>
-          <div>
-            <p className="text-muted-foreground text-sm mb-2">
-              View traffic for a specific week:
-            </p>
-            <div className="flex flex-wrap gap-1">
-              {Array.from({ length: 25 }, (_, i) => i + 1).map((w) => (
-                <Link
-                  key={w}
-                  href={linkUrl({ week: w })}
-                  className={`inline-flex h-8 min-w-8 items-center justify-center rounded-md px-2 text-sm font-medium transition-colors ${weekNum === w
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
-                    }`}
-                >
-                  {w}
-                </Link>
-              ))}
-            </div>
-          </div>
-          {range && (
-            <div className="rounded-md border bg-muted/50 p-3 text-sm">
-              <span className="font-medium">Week {range.weekNumber}:</span>{" "}
-              <span className="text-muted-foreground">
-                {range.startDate.toLocaleDateString("en-US", {
-                  timeZone: "America/New_York",
-                })}{" "}
-                –{" "}
-                {range.endDate.toLocaleDateString("en-US", {
-                  timeZone: "America/New_York",
-                })}{" "}
-                (ET)
-              </span>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <CampusWeekCard
+        basePath="/dev/traffic"
+        additionalSearchParams={{ increment: String(slotMinutes) }}
+        selectedWeek={weekNum}
+      />
 
       <TrafficWeeklyLineChartBySemester data={weeklyData} />
 
