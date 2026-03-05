@@ -95,6 +95,8 @@ export default function TrafficPage() {
   }
 
   const handleSubmitTraffic = async () => {
+    if (isSubmitting) return
+
     if (!validateUid()) {
       return
     }
@@ -149,24 +151,49 @@ export default function TrafficPage() {
     }
   }
 
+  const submitRef = useRef(handleSubmitTraffic)
+  useEffect(() => {
+    submitRef.current = handleSubmitTraffic
+  })
+
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        const target = e.target as HTMLElement
+        // Allow inputs to process Enter normally (they submit via their own onKeyDown handlers)
+        if (target.tagName === 'INPUT') return
+
+        // Prevent double submit if standard Record Traffic button is actively focused
+        if (target.tagName === 'BUTTON' && target.textContent?.includes('Record Traffic')) return
+
+        // Block other focused elements (e.g. duration selectors) from receiving Enter as a duplicate "Click"
+        // and instantly route the action to form submission.
+        e.preventDefault()
+        submitRef.current()
+      }
+    }
+    window.addEventListener('keydown', handleGlobalKeyDown)
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown)
+  }, [])
+
   // Define Success Screen
   if (showSuccess) {
     return (
-      <div className="flex min-h-screen items-center justify-center p-4 bg-green-50/50">
-        <Card className="w-full max-w-2xl border-0 shadow-2xl ring-1 ring-green-500/20 bg-white">
+      <div className="flex min-h-screen items-center justify-center p-4 bg-green-50/50 dark:bg-green-950/20">
+        <Card className="w-full max-w-2xl border-0 shadow-2xl ring-1 ring-green-500/20 bg-white dark:bg-card">
           <CardContent className="flex flex-col items-center justify-center py-20 animate-in zoom-in-95 duration-300">
-            <div className="rounded-full bg-green-100 p-6 mb-6">
-              <CheckCircle2 className="h-24 w-24 text-green-600 animate-in slide-in-from-bottom-4 duration-500 fade-in" />
+            <div className="rounded-full bg-green-100 dark:bg-green-900/30 p-6 mb-6">
+              <CheckCircle2 className="h-24 w-24 text-green-600 dark:text-green-400 animate-in slide-in-from-bottom-4 duration-500 fade-in" />
             </div>
-            <h2 className="text-4xl font-extrabold text-green-800 mb-2">Success!</h2>
-            <p className="text-xl text-green-700/80 mb-8 font-medium">Your visit has been logged.</p>
+            <h2 className="text-4xl font-extrabold text-green-800 dark:text-green-300 mb-2">Success!</h2>
+            <p className="text-xl text-green-700/80 dark:text-green-400/80 mb-8 font-medium">Your visit has been logged.</p>
 
-            <div className="bg-green-50 border border-green-200 rounded-2xl p-8 text-center w-full max-w-sm">
-              <p className="text-sm font-bold uppercase tracking-widest text-green-600/80 mb-2 flex items-center justify-center gap-1.5">
+            <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800/30 rounded-2xl p-8 text-center w-full max-w-sm">
+              <p className="text-sm font-bold uppercase tracking-widest text-green-600/80 dark:text-green-400 mb-2 flex items-center justify-center gap-1.5">
                 <Clock className="h-4 w-4" />
                 Estimated exit
               </p>
-              <p className="text-5xl font-extrabold tracking-tighter text-green-900 tabular-nums">
+              <p className="text-5xl font-extrabold tracking-tighter text-green-900 dark:text-green-100 tabular-nums" suppressHydrationWarning>
                 {formatEstimatedExit(durationMin)}
               </p>
             </div>
@@ -177,7 +204,7 @@ export default function TrafficPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4 lg:p-8 bg-muted/10">
+    <div className="flex min-h-screen items-center justify-center p-4 lg:p-8 bg-muted/10 dark:bg-background">
       <Card className="w-full max-w-4xl border-0 shadow-2xl ring-1 ring-border/50">
         <CardHeader className="text-center pb-6 pt-10 border-b border-border/40">
           <CardTitle className="text-4xl font-black tracking-tight text-foreground">
@@ -203,6 +230,7 @@ export default function TrafficPage() {
                   <Input
                     id="uid"
                     ref={uidInputRef}
+                    suppressHydrationWarning
                     type="text"
                     pattern="\d*"
                     inputMode="numeric"
@@ -219,11 +247,11 @@ export default function TrafficPage() {
                       }
                     }}
                     placeholder="Type UID"
-                    className={`h-14 pl-12 text-lg rounded-xl transition-all shadow-sm ${uidError ? "border-red-500 focus-visible:ring-red-500 bg-red-50/50" : "bg-card"}`}
+                    className={`h-14 pl-12 text-lg rounded-xl transition-all shadow-sm ${uidError ? "border-red-500 focus-visible:ring-red-500 bg-red-50/50 dark:bg-red-950/30" : "bg-card"}`}
                   />
                 </div>
                 {uidError ? (
-                  <p className="text-xs font-semibold text-red-500 ml-1">{uidError}</p>
+                  <p className="text-xs font-semibold text-red-500 dark:text-red-400 ml-1">{uidError}</p>
                 ) : (
                   <p className="text-xs font-medium text-muted-foreground ml-1">9-digit University ID</p>
                 )}
@@ -280,6 +308,16 @@ export default function TrafficPage() {
                           max={12}
                           value={customHours}
                           onChange={(e) => setCustomHours(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault()
+                              // Set value directly first to ensure it's captured before submission
+                              setCustomHours(e.currentTarget.value)
+
+                              // Use setTimeout to allow state to settle
+                              setTimeout(() => handleSubmitTraffic(), 50)
+                            }
+                          }}
                           placeholder="0"
                           className="h-12 border-primary/20 bg-background/80 text-center text-xl font-bold rounded-lg shadow-sm focus-visible:ring-primary/30"
                         />
@@ -292,6 +330,13 @@ export default function TrafficPage() {
                           max={59}
                           value={customMinutes}
                           onChange={(e) => setCustomMinutes(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault()
+                              setCustomMinutes(e.currentTarget.value)
+                              setTimeout(() => handleSubmitTraffic(), 50)
+                            }
+                          }}
                           placeholder="0"
                           className="h-12 border-primary/20 bg-background/80 text-center text-xl font-bold rounded-lg shadow-sm focus-visible:ring-primary/30"
                         />
@@ -312,7 +357,7 @@ export default function TrafficPage() {
                         <Clock className="h-5 w-5" />
                         Estimated exit
                       </p>
-                      <p className="text-6xl lg:text-7xl font-extrabold tracking-tighter text-foreground tabular-nums">
+                      <p className="text-6xl lg:text-7xl font-extrabold tracking-tighter text-foreground tabular-nums" suppressHydrationWarning>
                         {formatEstimatedExit(durationMin)}
                       </p>
                       <p className="mt-6 text-xs font-bold uppercase tracking-wider text-muted-foreground bg-background/60 px-4 py-2 rounded-full border border-border/50 shadow-sm">
@@ -332,7 +377,7 @@ export default function TrafficPage() {
                 <Button
                   onClick={handleSubmitTraffic}
                   disabled={isSubmitting || durationMin <= 0}
-                  className="w-full h-16 bg-green-600 hover:bg-green-700 text-white text-xl font-bold shadow-lg transition-all active:scale-[0.98] rounded-2xl group disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100"
+                  className="w-full h-16 bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600 text-white text-xl font-bold shadow-lg transition-all active:scale-[0.98] rounded-2xl group disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100"
                   size="lg"
                 >
                   {isSubmitting ? (
