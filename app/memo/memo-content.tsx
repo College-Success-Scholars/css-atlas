@@ -26,6 +26,8 @@ import {
 } from "@/app/dev/traffic/traffic-weekly-line-chart";
 import { TrafficHeatMapSection } from "@/app/dev/traffic/traffic-heat-map-section";
 import type { TrafficSession } from "@/lib/traffic";
+import { FormCompletionOverviewCard } from "@/components/form-completion-overview-card";
+import type { FormCompletionOverall } from "@/components/form-completion-overview-card";
 import { CohortPieChart } from "./cohort-pie-chart";
 
 function WeekPicker({
@@ -435,6 +437,7 @@ export function MemoContent({
   scholars,
   teamLeaders,
   pieData,
+  formCompletionOverall,
   completedStudy,
   completedFd,
   trafficWeeklyData,
@@ -450,6 +453,7 @@ export function MemoContent({
   scholars: MemoScholarRow[];
   teamLeaders: MemoTLRow[];
   pieData: MemoPieData;
+  formCompletionOverall: FormCompletionOverall;
   completedStudy: ScholarWithCompletedSession[];
   completedFd: ScholarWithCompletedSession[];
   trafficWeeklyData: WeekEntryCount[];
@@ -516,15 +520,15 @@ export function MemoContent({
         />
       </div>
 
-      {/* Room entries this week + cohort completion (FD and SS per cohort) */}
+      {/* Room entries this week */}
       <Card>
         <CardHeader>
           <CardTitle>Room entries this week</CardTitle>
           <CardDescription>
-            Entry count for the selected week; cohort FD/SS completion below.
+            Entry count for the selected week.
           </CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-col gap-6">
+        <CardContent>
           <RoomEntriesThisWeek
             trafficWeeklyData={trafficWeeklyData}
             selectedWeekNum={selectedWeekNum}
@@ -532,57 +536,62 @@ export function MemoContent({
             entryCountForSelectedWeek={trafficEntryCountForSelectedWeek}
             overrideEntryCount={freshEntryCount}
           />
-          {/* Cohort pies */}
-          <div className="flex min-h-0 flex-col border-t border-border/60 pt-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {/* Sophomores (2024) */}
-              <div className="flex min-h-0 flex-col">
-                <div className="flex items-center px-0.5 pb-0.5">
-                  <span className="text-sm font-semibold text-foreground">Sophomores (2024)</span>
-                </div>
-                <div className="flex flex-1 flex-row items-center justify-center gap-4 px-1 py-2">
-                  <CohortPieChart
-                    label="2024 FD"
-                    percentComplete={pieData.cohort2024.fdPercent}
-                    total={pieData.cohort2024.total}
-                    completeCount={pieData.cohort2024.fdCompleteCount}
-                    variant="fd"
-                  />
-                  <CohortPieChart
-                    label="2024 SS"
-                    percentComplete={pieData.cohort2024.ssPercent}
-                    total={pieData.cohort2024.total}
-                    completeCount={pieData.cohort2024.ssCompleteCount}
-                    variant="ss"
-                  />
-                </div>
-              </div>
-              {/* Freshmen (2025) */}
-              <div className="flex min-h-0 flex-col">
-                <div className="flex items-center px-0.5 pb-0.5">
-                  <span className="text-sm font-semibold text-foreground">Freshmen (2025)</span>
-                </div>
-                <div className="flex flex-1 flex-row items-center justify-center gap-4 px-1 py-2">
-                  <CohortPieChart
-                    label="2025 FD"
-                    percentComplete={pieData.cohort2025.fdPercent}
-                    total={pieData.cohort2025.total}
-                    completeCount={pieData.cohort2025.fdCompleteCount}
-                    variant="fd"
-                  />
-                  <CohortPieChart
-                    label="2025 SS"
-                    percentComplete={pieData.cohort2025.ssPercent}
-                    total={pieData.cohort2025.total}
-                    completeCount={pieData.cohort2025.ssCompleteCount}
-                    variant="ss"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
         </CardContent>
       </Card>
+
+      {/* Cohort FD/SS completion — two standalone cards side by side */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>Sophomores (2024)</CardTitle>
+            <CardDescription>
+              Front desk and study session completion for 2024 cohort.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-row items-center justify-center gap-4">
+            <CohortPieChart
+              label="2024 FD"
+              percentComplete={pieData.cohort2024.fdPercent}
+              total={pieData.cohort2024.total}
+              completeCount={pieData.cohort2024.fdCompleteCount}
+              variant="fd"
+            />
+            <CohortPieChart
+              label="2024 SS"
+              percentComplete={pieData.cohort2024.ssPercent}
+              total={pieData.cohort2024.total}
+              completeCount={pieData.cohort2024.ssCompleteCount}
+              variant="ss"
+            />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Freshmen (2025)</CardTitle>
+            <CardDescription>
+              Front desk and study session completion for 2025 cohort.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-row items-center justify-center gap-4">
+            <CohortPieChart
+              label="2025 FD"
+              percentComplete={pieData.cohort2025.fdPercent}
+              total={pieData.cohort2025.total}
+              completeCount={pieData.cohort2025.fdCompleteCount}
+              variant="fd"
+            />
+            <CohortPieChart
+              label="2025 SS"
+              percentComplete={pieData.cohort2025.ssPercent}
+              total={pieData.cohort2025.total}
+              completeCount={pieData.cohort2025.ssCompleteCount}
+              variant="ss"
+            />
+          </CardContent>
+        </Card>
+      </div>
+
+      <FormCompletionOverviewCard overall={formCompletionOverall} />
 
       {/* Traffic: entry count by week (fall and spring) + heat map — same as dev/traffic */}
       {trafficCardSpan === "half" ? (
