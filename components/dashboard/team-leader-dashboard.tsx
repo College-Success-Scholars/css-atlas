@@ -36,7 +36,7 @@ export function TeamLeaderDashboard() {
             <div className="p-4 border rounded-lg">
               <h3 className="font-medium mb-2">Mentee Monitoring</h3>
               <p className="text-sm text-muted-foreground">
-                Monitor your mentees' study sessions, front desk hours, tutoring, and WAHF status.
+                Monitor your mentees&apos; study sessions, front desk hours, tutoring, and WAHF status.
               </p>
             </div>
             <div className="p-4 border rounded-lg">

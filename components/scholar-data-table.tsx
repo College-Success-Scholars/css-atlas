@@ -139,22 +139,24 @@ export function ScholarDataTable<T>({
   const { columnId: sortColumnId, direction: sortDirection } = sortState;
 
   const hasNameUid = nameColumn != null || uidColumn != null;
-  const resolvedColumns: ScholarDataTableColumn<T>[] = hasNameUid
-    ? [
-      ...(nameColumn
-        ? [
-          toColumn<T>("name", nameColumn.header ?? "Scholar", {
-            ...nameColumn,
-            colSpan: nameColumn.colSpan ?? 2,
-          }),
-        ]
-        : []),
-      ...(uidColumn
-        ? [toColumn<T>("uid", uidColumn.header ?? "UID", uidColumn)]
-        : []),
-      ...columns,
-    ]
-    : columns;
+  const resolvedColumns: ScholarDataTableColumn<T>[] = useMemo(() => {
+    return hasNameUid
+      ? [
+        ...(nameColumn
+          ? [
+            toColumn<T>("name", nameColumn.header ?? "Scholar", {
+              ...nameColumn,
+              colSpan: nameColumn.colSpan ?? 2,
+            }),
+          ]
+          : []),
+        ...(uidColumn
+          ? [toColumn<T>("uid", uidColumn.header ?? "UID", uidColumn)]
+          : []),
+        ...columns,
+      ]
+      : columns;
+  }, [hasNameUid, nameColumn, uidColumn, columns]);
 
   const sortedData = useMemo(() => {
     if (sortColumnId == null) return data;
