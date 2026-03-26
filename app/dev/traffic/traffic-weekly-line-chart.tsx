@@ -93,11 +93,14 @@ export function TrafficWeeklyLineChart({
 
     const x = d3
       .scaleLinear()
-      .domain(d3.extent(chartData, (d) => d.weekNumber) as [number, number])
+      .domain(
+        d3.extent(chartData, (d: WeekEntryCount) => d.weekNumber) as [number, number]
+      )
       .range([0, width])
       .nice();
 
-    const yMax = d3.max(chartData, (d) => d.entryCount) ?? 1;
+    const yMax =
+      d3.max(chartData, (d: WeekEntryCount) => d.entryCount) ?? 1;
     const y = d3
       .scaleLinear()
       .domain([0, yMax])
@@ -107,9 +110,9 @@ export function TrafficWeeklyLineChart({
     const sortedData = [...chartData].sort((a, b) => a.weekNumber - b.weekNumber);
 
     const line = d3
-      .line<WeekEntryCount>()
-      .x((d) => x(d.weekNumber))
-      .y((d) => y(d.entryCount))
+      .line()
+      .x((d: WeekEntryCount) => x(d.weekNumber))
+      .y((d: WeekEntryCount) => y(d.entryCount))
       .curve(d3.curveMonotoneX);
 
     g.append("path")
@@ -125,12 +128,15 @@ export function TrafficWeeklyLineChart({
       .data(sortedData)
       .join("circle")
       .attr("class", "dot")
-      .attr("cx", (d) => x(d.weekNumber))
-      .attr("cy", (d) => y(d.entryCount))
+      .attr("cx", (d: WeekEntryCount) => x(d.weekNumber))
+      .attr("cy", (d: WeekEntryCount) => y(d.entryCount))
       .attr("r", 3)
       .attr("fill", TRAFFIC_COLOR);
 
-    const xAxis = d3.axisBottom(x).ticks(chartData.length).tickFormat((v) => String(v));
+    const xAxis = d3
+      .axisBottom(x)
+      .ticks(chartData.length)
+      .tickFormat((v: number) => String(v));
     g.append("g")
       .attr("transform", `translate(0,${height})`)
       .call(xAxis)

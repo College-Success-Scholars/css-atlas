@@ -64,7 +64,11 @@ export function ChartRadialText() {
             <RadialBar dataKey="visitors" background cornerRadius={10} />
             <PolarRadiusAxis tick={false} tickLine={false} axisLine={false}>
               <Label
-                content={({ viewBox }) => {
+                content={({
+                  viewBox,
+                }: {
+                  viewBox?: { cx?: number; cy?: number }
+                }) => {
                   if (viewBox && "cx" in viewBox && "cy" in viewBox) {
                     return (
                       <text

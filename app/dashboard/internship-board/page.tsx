@@ -56,6 +56,8 @@ interface Opportunity {
   expiryDate: string
   description: string
   jobUrl: string
+  // Client-side only: toggled/bookmarked by the UI (API may not return it).
+  bookmarked?: boolean
 }
 
 interface AddOpportunityForm {
@@ -218,7 +220,7 @@ export default function InternshipBoardPage() {
       console.log('🔄 [DEBUG] Starting data transformation...')
       
       // Transform API data to match our Opportunity interface
-      const transformedData: Opportunity[] = data.map((item: any, index: number) => {
+      const transformedData: Opportunity[] = data.map((item: Opportunity, index: number) => {
         console.log(`🔧 [DEBUG] Transforming item ${index}:`, item)
         
         const transformed = {

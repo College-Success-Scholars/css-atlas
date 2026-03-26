@@ -13,6 +13,7 @@ import { createClient } from "@/lib/supabase/server"
 import { getUserProfile } from "@/lib/auth"
 // Activity type definitions
 type ActivityType = 
+  | "form_submission"
   | "wahf_submission"
   | "mcf_submission"
   | "wpl_submission"
@@ -33,8 +34,42 @@ interface ActivityDisplay {
   label: string;
 }
 
+interface ActivityEntry {
+  id: string
+  type: ActivityType
+  timestamp: Date
+  created_at?: string | Date
+  description: string
+  location?: string
+  duration?: string
+}
+
+function getActivityDisplay(type: ActivityType): ActivityDisplay {
+  switch (type) {
+    case "wahf_submission":
+    case "mcf_submission":
+    case "wpl_submission":
+    case "form_submission":
+      return { icon: Clock, badge: "secondary", label: "Form submission" }
+    case "room_entry":
+    case "room_exit":
+      return { icon: DoorOpen, badge: "outline", label: "Room" }
+    case "study_session_entry":
+    case "study_session_exit":
+      return { icon: BookOpen, badge: "outline", label: "Study session" }
+    case "tutoring_entry":
+    case "tutoring_exit":
+      return { icon: UserCheck, badge: "outline", label: "Tutoring" }
+    case "front_desk_entry":
+    case "front_desk_exit":
+      return { icon: ClipboardList, badge: "outline", label: "Front desk" }
+    default:
+      return { icon: Clock, badge: "outline", label: "Activity" }
+  }
+}
+
 //Mock data - replace with actual Supabase queries later
-const mockActivityData: any[] = [
+const mockActivityData: ActivityEntry[] = [
   {
     id: "1",
     type: "form_submission",
@@ -117,7 +152,7 @@ function formatTimestamp(date: Date): string {
 
 export async function ActivityLog() {
   // Fetch activities from Supabase
-  const activities: any[] = []
+  const activities: ActivityEntry[] = []
   
   // Handle case where activities might be null or empty
   if (!activities || activities.length === 0) {
@@ -141,11 +176,11 @@ export async function ActivityLog() {
 
   // Transform and sort activities by timestamp (most recent first)
   const sortedActivities = activities
-    .map((activity: any) => ({
+    .map((activity) => ({
       id: activity.id,
-      type: activity.type as ActivityType,
-      timestamp: new Date(activity.created_at || activity.timestamp),
-      description: activity.description || activity.type,
+      type: activity.type,
+      timestamp: new Date(activity.created_at ?? activity.timestamp),
+      description: activity.description ?? activity.type,
       location: activity.location,
       duration: activity.duration
     }))

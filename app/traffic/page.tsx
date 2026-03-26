@@ -45,9 +45,9 @@ export default function TrafficPage() {
 
   const uidInputRef = useRef<HTMLInputElement>(null)
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_OR_ANON_KEY as string
-  const supabase = createClient(supabaseUrl, supabaseKey)
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_OR_ANON_KEY
+  const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null
 
   // Auto-focus the UID field on load
   useEffect(() => {
@@ -108,6 +108,11 @@ export default function TrafficPage() {
 
     setIsSubmitting(true)
     try {
+      if (!supabase) {
+        toast.error("Supabase is not configured. Please check environment variables.")
+        return
+      }
+
       const { error } = await supabase
         .from("traffic")
         .insert([
