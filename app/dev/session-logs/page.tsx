@@ -29,6 +29,7 @@ import {
   CollapsibleTableSection,
   type ScholarDataTableColumn,
 } from "@/components/scholar-data-table";
+import { CampusWeekCard } from "@/components/campus-week-card";
 import {
   Card,
   CardContent,
@@ -132,88 +133,43 @@ export default async function SessionLogsTestPage({ searchParams }: PageProps) {
         </Card>
       )}
 
-      {/* Time utilities */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Time utilities</CardTitle>
-          <CardDescription>
-            Filter sessions by campus week. Uses academic calendar from lib/time.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-wrap items-center gap-2 text-sm">
-            <span className="text-muted-foreground">
-              Current campus week:
-            </span>
-            <Badge variant="secondary">
-              {currentCampusWeek ?? "—"}
-            </Badge>
-          </div>
-          <div>
-            <p className="text-muted-foreground text-sm mb-2">
-              View sessions for a specific week:
-            </p>
-            <div className="flex flex-wrap gap-1">
-              {Array.from({ length: 25 }, (_, i) => i + 1).map((w) => (
-                <Link
-                  key={w}
-                  href={`/dev/session-logs?week=${w}`}
-                  className={`inline-flex h-8 min-w-8 items-center justify-center rounded-md px-2 text-sm font-medium transition-colors ${weekNum === w
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
-                    }`}
-                >
-                  {w}
-                </Link>
-              ))}
-            </div>
-          </div>
-          {range && (
-            <div className="rounded-md border bg-muted/50 p-3 text-sm">
-              <span className="font-medium">Week {range.weekNumber}:</span>{" "}
-              <span className="text-muted-foreground">
-                {range.startDate.toLocaleDateString("en-US", {
-                  timeZone: "America/New_York",
-                })}{" "}
-                -{" "}
-                {range.endDate.toLocaleDateString("en-US", {
-                  timeZone: "America/New_York",
-                })}{" "}
-                (ET)
-              </span>
-              <Link
-                href={
-                  scholarUids
-                    ? `/dev/session-logs?uids=${scholarUids.join(",")}`
-                    : "/dev/session-logs"
-                }
-                className="ml-3 text-sm text-muted-foreground hover:text-foreground underline"
-              >
-                {scholarUids ? "Clear week" : "Clear filter"}
-              </Link>
-            </div>
-          )}
-          {scholarUids && scholarUids.length > 0 && (
-            <div className="rounded-md border bg-muted/50 p-3 text-sm">
-              <span className="font-medium">UIDs:</span>{" "}
-              <span className="text-muted-foreground font-mono text-xs">
-                {scholarUids.join(", ")}
-              </span>
-              <Link
-                href={weekNum != null ? `/dev/session-logs?week=${weekNum}` : "/dev/session-logs"}
-                className="ml-3 text-sm text-muted-foreground hover:text-foreground underline"
-              >
-                Clear UIDs
-              </Link>
-            </div>
-          )}
-          <p className="text-muted-foreground text-xs mt-2">
-            Optional: filter by scholar UIDs with{" "}
-            <code className="rounded bg-muted px-1">?uids=1,2,3</code> (comma-separated). Combine with{" "}
-            <code className="rounded bg-muted px-1">week</code> for date range + UID filter.
-          </p>
-        </CardContent>
-      </Card>
+      <CampusWeekCard
+        basePath="/dev/session-logs"
+        selectedWeek={weekNum}
+      />
+      {weekNum != null && (
+        <p className="text-sm">
+          <Link
+            href={
+              scholarUids?.length
+                ? `/dev/session-logs?uids=${scholarUids.join(",")}`
+                : "/dev/session-logs"
+            }
+            className="text-muted-foreground hover:text-foreground underline"
+          >
+            {scholarUids?.length ? "Clear week" : "Clear filter"}
+          </Link>
+        </p>
+      )}
+      {scholarUids && scholarUids.length > 0 && (
+        <div className="rounded-md border bg-muted/50 p-3 text-sm">
+          <span className="font-medium">UIDs:</span>{" "}
+          <span className="text-muted-foreground font-mono text-xs">
+            {scholarUids.join(", ")}
+          </span>
+          <Link
+            href={weekNum != null ? `/dev/session-logs?week=${weekNum}` : "/dev/session-logs"}
+            className="ml-3 text-sm text-muted-foreground hover:text-foreground underline"
+          >
+            Clear UIDs
+          </Link>
+        </div>
+      )}
+      <p className="text-muted-foreground text-xs mt-2">
+        Optional: filter by scholar UIDs with{" "}
+        <code className="rounded bg-muted px-1">?uids=1,2,3</code> (comma-separated). Combine with{" "}
+        <code className="rounded bg-muted px-1">week</code> for date range + UID filter.
+      </p>
 
       {/* Session Heat Map */}
       <SessionHeatMap completedStudy={completedStudy} completedFd={completedFd} />

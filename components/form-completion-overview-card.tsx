@@ -1,8 +1,14 @@
 /**
- * Donut charts for overall form completion (WHAF, MCF, WPL), matching the
- * style of app/memo/cohort-pie-chart.tsx.
- * Late submissions are shown in the same yellow as the progress cell (yellow-500).
+ * Standalone card for overall form completion (all team leaders) with WHAF/MCF/WPL
+ * donut charts. Late submissions are shown in the same yellow as the progress cell (yellow-500).
  */
+
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 /** Red → purple gradient: red, blend, purple */
 const WHAF_CHART_COLOR = "#dc2626";
@@ -12,7 +18,10 @@ const WPL_CHART_COLOR = "#9333ea";
 /** Same yellow as progress cell (bg-yellow-500/20 uses yellow-500) */
 const LATE_CHART_COLOR = "#eab308";
 
-function FormCompletionDonut({
+/** WHAF donut color; exported for use in all-scholars WHAF card. */
+export const FORM_COMPLETION_WHAF_COLOR = WHAF_CHART_COLOR;
+
+export function FormCompletionDonut({
   label,
   percentComplete,
   total,
@@ -108,7 +117,7 @@ export type FormCompletionOverall = {
   wpl_late_count: number;
 };
 
-export function FormCompletionPieCharts({ overall }: { overall: FormCompletionOverall }) {
+function FormCompletionPieChartsInner({ overall }: { overall: FormCompletionOverall }) {
   const whafPct =
     overall.whaf_required > 0
       ? (overall.whaf_completed / overall.whaf_required) * 100
@@ -123,36 +132,44 @@ export function FormCompletionPieCharts({ overall }: { overall: FormCompletionOv
       : null;
 
   return (
-    <div className="rounded-lg border bg-muted/30 px-4 py-3">
-      <p className="text-sm font-medium text-muted-foreground mb-3">
-        Overall form completion (all team leaders)
-      </p>
-      <div className="flex flex-row flex-wrap items-center justify-center gap-6 sm:gap-8">
-        <FormCompletionDonut
-          label="WHAF"
-          percentComplete={whafPct}
-          total={overall.whaf_required}
-          completeCount={overall.whaf_completed}
-          lateCount={overall.whaf_late_count}
-          strokeColor={WHAF_CHART_COLOR}
-        />
-        <FormCompletionDonut
-          label="MCF"
-          percentComplete={mcfPct}
-          total={overall.mcf_required}
-          completeCount={overall.mcf_completed}
-          lateCount={overall.mcf_late_count}
-          strokeColor={MCF_CHART_COLOR}
-        />
-        <FormCompletionDonut
-          label="WPL"
-          percentComplete={wplPct}
-          total={overall.wpl_required}
-          completeCount={overall.wpl_completed}
-          lateCount={overall.wpl_late_count}
-          strokeColor={WPL_CHART_COLOR}
-        />
-      </div>
+    <div className="flex flex-row flex-wrap items-center justify-center gap-6 sm:gap-8">
+      <FormCompletionDonut
+        label="WHAF"
+        percentComplete={whafPct}
+        total={overall.whaf_required}
+        completeCount={overall.whaf_completed}
+        lateCount={overall.whaf_late_count}
+        strokeColor={WHAF_CHART_COLOR}
+      />
+      <FormCompletionDonut
+        label="MCF"
+        percentComplete={mcfPct}
+        total={overall.mcf_required}
+        completeCount={overall.mcf_completed}
+        lateCount={overall.mcf_late_count}
+        strokeColor={MCF_CHART_COLOR}
+      />
+      <FormCompletionDonut
+        label="WPL"
+        percentComplete={wplPct}
+        total={overall.wpl_required}
+        completeCount={overall.wpl_completed}
+        lateCount={overall.wpl_late_count}
+        strokeColor={WPL_CHART_COLOR}
+      />
     </div>
+  );
+}
+
+export function FormCompletionOverviewCard({ overall }: { overall: FormCompletionOverall }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Overall form completion (all team leaders)</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <FormCompletionPieChartsInner overall={overall} />
+      </CardContent>
+    </Card>
   );
 }

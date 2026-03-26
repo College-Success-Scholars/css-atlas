@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CampusWeekCard } from "@/components/campus-week-card";
 import {
   Card,
   CardContent,
@@ -6,16 +7,19 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { dateToCampusWeek, campusWeekToDateRange } from "@/lib/time";
-import { fetchTeamLeaders } from "@/lib/server/users";
+import { dateToCampusWeek } from "@/lib/time";
+import { fetchTeamLeaders, fetchAllUsersForMemo } from "@/lib/server/users";
 import {
   getMcfFormLogsForWeekWithLate,
   getWhafFormLogsForWeekWithLate,
   getWplFormLogsForWeekWithLate,
   buildTeamLeaderFormStatsForWeek,
 } from "@/lib/server/form-logs";
-import { Badge } from "@/components/ui/badge";
-import { FormCompletionPieCharts } from "./form-completion-pie-charts";
+import {
+  FormCompletionOverviewCard,
+  FormCompletionDonut,
+  FORM_COMPLETION_WHAF_COLOR,
+} from "@/components/form-completion-overview-card";
 import { TeamLeadersTable } from "./team-leaders-table";
 
 export const metadata = {
@@ -38,23 +42,27 @@ function parseWeekParam(
     : 1;
 }
 
-function formLogsWeekLink(week: number): string {
-  return `/dev/form-logs?week=${week}`;
-}
-
 export default async function FormLogsTestPage({ searchParams }: PageProps) {
   const params = await searchParams;
   const currentCampusWeek = dateToCampusWeek(new Date());
   const weekNum = parseWeekParam(params.week, currentCampusWeek);
-  const range = campusWeekToDateRange(weekNum);
 
-  const [teamLeadersRaw, mcfRowsWithLate, whafRows, wplRowsWithLate] =
+  const [teamLeadersRaw, mcfRowsWithLate, whafRows, wplRowsWithLate, allUsers] =
     await Promise.all([
       fetchTeamLeaders(),
       getMcfFormLogsForWeekWithLate(weekNum),
       getWhafFormLogsForWeekWithLate(weekNum),
       getWplFormLogsForWeekWithLate(weekNum),
+      fetchAllUsersForMemo(),
     ]);
+
+  const whafSubmitterUids = new Set(
+    whafRows.map((r) => r.scholar_uid).filter((uid): uid is string => Boolean(uid))
+  );
+  const totalEveryone = allUsers.length;
+  const everyoneWithWhaf = allUsers.filter((u) => whafSubmitterUids.has(u.uid)).length;
+  const everyoneWhafPct =
+    totalEveryone > 0 ? Math.round((everyoneWithWhaf / totalEveryone) * 100) : 0;
 
   const teamLeaderRows = buildTeamLeaderFormStatsForWeek(
     teamLeadersRaw,
@@ -109,56 +117,31 @@ export default async function FormLogsTestPage({ searchParams }: PageProps) {
         </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Week selector</CardTitle>
-          <CardDescription>
-            Campus week from{" "}
-            <code className="rounded bg-muted px-1">lib/time</code> (academic
-            calendar). Deadlines: WHAF Thu 23:59 ET, MCF & WPL Fri 17:00 ET.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-wrap items-center gap-2 text-sm">
-            <span className="text-muted-foreground">Current campus week:</span>
-            <Badge variant="secondary">{currentCampusWeek ?? "—"}</Badge>
-          </div>
-          <div>
-            <p className="text-muted-foreground text-sm mb-2">
-              View form logs for a specific week:
-            </p>
-            <div className="flex flex-wrap gap-1">
-              {Array.from({ length: 25 }, (_, i) => i + 1).map((w) => (
-                <Link
-                  key={w}
-                  href={formLogsWeekLink(w)}
-                  className={`inline-flex h-8 min-w-8 items-center justify-center rounded-md px-2 text-sm font-medium transition-colors ${weekNum === w
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
-                    }`}
-                >
-                  {w}
-                </Link>
-              ))}
-            </div>
-          </div>
-          {range && (
-            <div className="rounded-md border bg-muted/50 p-3 text-sm">
-              <span className="font-medium">Week {range.weekNumber}:</span>{" "}
-              <span className="text-muted-foreground">
-                {range.startDate.toLocaleDateString("en-US", {
-                  timeZone: "America/New_York",
-                })}{" "}
-                –{" "}
-                {range.endDate.toLocaleDateString("en-US", {
-                  timeZone: "America/New_York",
-                })}{" "}
-                (ET)
-              </span>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <CampusWeekCard
+        basePath="/dev/form-logs"
+        selectedWeek={weekNum}
+      />
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="md:col-span-1">
+          <CardHeader>
+            <CardTitle>WHAF completion (everyone)</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-row flex-wrap items-center justify-center gap-6 sm:gap-8">
+            <FormCompletionDonut
+              label="WHAF"
+              percentComplete={totalEveryone > 0 ? everyoneWhafPct : null}
+              total={totalEveryone}
+              completeCount={everyoneWithWhaf}
+              lateCount={0}
+              strokeColor={FORM_COMPLETION_WHAF_COLOR}
+            />
+          </CardContent>
+        </Card>
+        <div className="md:col-span-2">
+          <FormCompletionOverviewCard overall={overall} />
+        </div>
+      </div>
 
       <Card>
         <CardHeader>
@@ -170,7 +153,6 @@ export default async function FormLogsTestPage({ searchParams }: PageProps) {
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-6">
-          <FormCompletionPieCharts overall={overall} />
           <TeamLeadersTable rows={teamLeaderRows} />
         </CardContent>
       </Card>

@@ -22,7 +22,12 @@ import {
 } from "@/lib/server/traffic";
 import {
   getMcfFormLogsByUidAndWeekWithLate,
+  getMcfFormLogsForWeekWithLate,
+  getWhafFormLogsForWeekWithLate,
+  getWplFormLogsForWeekWithLate,
+  buildTeamLeaderFormStatsForWeek,
 } from "@/lib/server/form-logs";
+import { fetchTeamLeaders } from "@/lib/server/users";
 import { MemoContent } from "./memo-content";
 import type { MemoScholarRow, MemoTLRow, MemoPieData } from "./memo-content";
 import type { ScholarWithCompletedSession } from "@/lib/session-logs";
@@ -76,6 +81,10 @@ export default async function MemoPage({ searchParams }: PageProps) {
     trafficWeeklyData,
     trafficEntryCountForSelectedWeek,
     trafficSessions,
+    teamLeadersRaw,
+    mcfRowsWithLate,
+    whafRowsWithLate,
+    wplRowsWithLate,
   ] = await Promise.all([
     fetchAllUsersForMemo(),
     getStudySessionRecordsForWeekAll(weekNum),
@@ -85,7 +94,42 @@ export default async function MemoPage({ searchParams }: PageProps) {
     getTrafficEntryCountsForWeeks(weekNumbers),
     getTrafficEntryCountForWeek(weekNum),
     getTrafficSessionsForWeek(weekNum),
+    fetchTeamLeaders(),
+    getMcfFormLogsForWeekWithLate(weekNum),
+    getWhafFormLogsForWeekWithLate(weekNum),
+    getWplFormLogsForWeekWithLate(weekNum),
   ]);
+
+  const teamLeaderFormRows = buildTeamLeaderFormStatsForWeek(
+    teamLeadersRaw,
+    mcfRowsWithLate,
+    whafRowsWithLate,
+    wplRowsWithLate
+  );
+  const formCompletionOverall = teamLeaderFormRows.reduce(
+    (acc, row) => ({
+      whaf_completed: acc.whaf_completed + Math.min(row.whaf_completed, row.whaf_required),
+      whaf_required: acc.whaf_required + row.whaf_required,
+      whaf_late_count: acc.whaf_late_count + (row.whaf_late ? 1 : 0),
+      mcf_completed: acc.mcf_completed + Math.min(row.mcf_completed, row.mcf_required),
+      mcf_required: acc.mcf_required + row.mcf_required,
+      mcf_late_count: acc.mcf_late_count + (row.mcf_late ? 1 : 0),
+      wpl_completed: acc.wpl_completed + Math.min(row.wpl_completed, row.wpl_required),
+      wpl_required: acc.wpl_required + row.wpl_required,
+      wpl_late_count: acc.wpl_late_count + (row.wpl_late ? 1 : 0),
+    }),
+    {
+      whaf_completed: 0,
+      whaf_required: 0,
+      whaf_late_count: 0,
+      mcf_completed: 0,
+      mcf_required: 0,
+      mcf_late_count: 0,
+      wpl_completed: 0,
+      wpl_required: 0,
+      wpl_late_count: 0,
+    }
+  );
 
   const studyByUid = new Map(
     studyRecords
@@ -273,6 +317,7 @@ export default async function MemoPage({ searchParams }: PageProps) {
       scholars={scholars}
       teamLeaders={teamLeaders}
       pieData={pieData}
+      formCompletionOverall={formCompletionOverall}
       completedStudy={completedStudy as ScholarWithCompletedSession[]}
       completedFd={completedFd as ScholarWithCompletedSession[]}
       trafficWeeklyData={trafficWeeklyData}
