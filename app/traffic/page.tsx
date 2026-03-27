@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@supabase/supabase-js"
+import { getSupabasePublicKey } from "@/lib/supabase/public-key"
 import { toast } from "sonner"
 import { Clock, Timer, CheckCircle2, UserIcon } from "lucide-react"
 
@@ -45,9 +46,9 @@ export default function TrafficPage() {
 
   const uidInputRef = useRef<HTMLInputElement>(null)
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_OR_ANON_KEY as string
-  const supabase = createClient(supabaseUrl, supabaseKey)
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseKey = getSupabasePublicKey()
+  const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null
 
   // Auto-focus the UID field on load
   useEffect(() => {
@@ -108,6 +109,11 @@ export default function TrafficPage() {
 
     setIsSubmitting(true)
     try {
+      if (!supabase) {
+        toast.error("Supabase is not configured. Please check environment variables.")
+        return
+      }
+
       const { error } = await supabase
         .from("traffic")
         .insert([
