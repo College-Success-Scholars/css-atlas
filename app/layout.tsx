@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { InviteFromHashRedirect } from "@/components/auth/invite-from-hash-redirect";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "sonner";
@@ -46,6 +47,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
+          <InviteFromHashRedirect />
           {children}
           <Toaster />
         </ThemeProvider>
