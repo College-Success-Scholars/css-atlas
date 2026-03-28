@@ -1,11 +1,23 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { hasEnvVars } from "../utils";
+import { getSupabasePublicKey } from "./public-key";
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
   });
+
+  const pathname = request.nextUrl.pathname;
+  // Next.js static assets must not hit auth redirects (browser would get HTML instead of CSS/JS/fonts).
+  if (pathname.startsWith("/_next") || pathname.startsWith("/favicon")) {
+    return supabaseResponse;
+  }
+  // Files from public/ (and next/image internal fetches) must bypass auth — otherwise the
+  // optimizer receives a redirect/HTML and fails with "isn't a valid image ... received null".
+  if (/\.(ico|png|jpg|jpeg|svg|gif|webp|avif|woff2?|ttf|eot)$/i.test(pathname)) {
+    return supabaseResponse;
+  }
 
   // If the env vars are not set, skip middleware check. You can remove this
   // once you setup the project.
@@ -15,9 +27,11 @@ export async function updateSession(request: NextRequest) {
 
   // With Fluid compute, don't put this client in a global environment
   // variable. Always create a new one on each request.
+  const supabaseKey = getSupabasePublicKey();
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_OR_ANON_KEY!,
+    supabaseKey!,
     {
       cookies: {
         getAll() {

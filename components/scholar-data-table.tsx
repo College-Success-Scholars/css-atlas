@@ -139,22 +139,24 @@ export function ScholarDataTable<T>({
   const { columnId: sortColumnId, direction: sortDirection } = sortState;
 
   const hasNameUid = nameColumn != null || uidColumn != null;
-  const resolvedColumns: ScholarDataTableColumn<T>[] = hasNameUid
-    ? [
-      ...(nameColumn
-        ? [
-          toColumn<T>("name", nameColumn.header ?? "Scholar", {
-            ...nameColumn,
-            colSpan: nameColumn.colSpan ?? 2,
-          }),
-        ]
-        : []),
-      ...(uidColumn
-        ? [toColumn<T>("uid", uidColumn.header ?? "UID", uidColumn)]
-        : []),
-      ...columns,
-    ]
-    : columns;
+  const resolvedColumns: ScholarDataTableColumn<T>[] = useMemo(() => {
+    return hasNameUid
+      ? [
+        ...(nameColumn
+          ? [
+            toColumn<T>("name", nameColumn.header ?? "Scholar", {
+              ...nameColumn,
+              colSpan: nameColumn.colSpan ?? 2,
+            }),
+          ]
+          : []),
+        ...(uidColumn
+          ? [toColumn<T>("uid", uidColumn.header ?? "UID", uidColumn)]
+          : []),
+        ...columns,
+      ]
+      : columns;
+  }, [hasNameUid, nameColumn, uidColumn, columns]);
 
   const sortedData = useMemo(() => {
     if (sortColumnId == null) return data;
@@ -246,12 +248,13 @@ export function ScholarDataTable<T>({
           {sortedData.map((row, i) => (
             <tr
               key={`${String(row[rowKeyField])}-${i}`}
+              className="even:bg-muted/40 dark:even:bg-muted/25"
               {...(rowDataAttributes?.(row) ?? {})}
             >
               {resolvedColumns.map((col) => (
                 <td
                   key={col.id}
-                  className={`${cellClass} ${col.cellClassName ?? ""}`}
+                  className={`${cellClass} pl-4 ${col.cellClassName ?? ""}`}
                   colSpan={col.colSpan ?? 1}
                   data-column-id={col.id}
                 >

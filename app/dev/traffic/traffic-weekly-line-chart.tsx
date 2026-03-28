@@ -35,7 +35,7 @@ interface TrafficWeeklyLineChartProps {
 
 const MARGIN = { top: 24, right: 24, bottom: 32, left: 40 };
 const DEFAULT_WIDTH = 600;
-const DEFAULT_HEIGHT = 280;
+const DEFAULT_HEIGHT = 200;
 /** Width per chart when two are shown side by side (fits in max-w-5xl with gap). */
 const SIDE_BY_SIDE_WIDTH = 460;
 /** Height per chart in half view so card profile is roughly square. */
@@ -93,11 +93,14 @@ export function TrafficWeeklyLineChart({
 
     const x = d3
       .scaleLinear()
-      .domain(d3.extent(chartData, (d) => d.weekNumber) as [number, number])
+      .domain(
+        d3.extent(chartData, (d: WeekEntryCount) => d.weekNumber) as [number, number]
+      )
       .range([0, width])
       .nice();
 
-    const yMax = d3.max(chartData, (d) => d.entryCount) ?? 1;
+    const yMax =
+      d3.max(chartData, (d: WeekEntryCount) => d.entryCount) ?? 1;
     const y = d3
       .scaleLinear()
       .domain([0, yMax])
@@ -107,9 +110,9 @@ export function TrafficWeeklyLineChart({
     const sortedData = [...chartData].sort((a, b) => a.weekNumber - b.weekNumber);
 
     const line = d3
-      .line<WeekEntryCount>()
-      .x((d) => x(d.weekNumber))
-      .y((d) => y(d.entryCount))
+      .line()
+      .x((d: WeekEntryCount) => x(d.weekNumber))
+      .y((d: WeekEntryCount) => y(d.entryCount))
       .curve(d3.curveMonotoneX);
 
     g.append("path")
@@ -125,12 +128,15 @@ export function TrafficWeeklyLineChart({
       .data(sortedData)
       .join("circle")
       .attr("class", "dot")
-      .attr("cx", (d) => x(d.weekNumber))
-      .attr("cy", (d) => y(d.entryCount))
+      .attr("cx", (d: WeekEntryCount) => x(d.weekNumber))
+      .attr("cy", (d: WeekEntryCount) => y(d.entryCount))
       .attr("r", 3)
       .attr("fill", TRAFFIC_COLOR);
 
-    const xAxis = d3.axisBottom(x).ticks(chartData.length).tickFormat((v) => String(v));
+    const xAxis = d3
+      .axisBottom(x)
+      .ticks(chartData.length)
+      .tickFormat((v: number) => String(v));
     g.append("g")
       .attr("transform", `translate(0,${height})`)
       .call(xAxis)
@@ -196,6 +202,9 @@ export function TrafficWeeklyLineChart({
   );
 }
 
+/** When set to "fall" or "spring", only that semester's chart is shown. Default "both". */
+export type TrafficSemesterFilter = "fall" | "spring" | "both";
+
 interface TrafficWeeklyLineChartBySemesterProps {
   data: WeekEntryCount[];
   /** Max campus week to include in spring (e.g. 25). */
@@ -204,6 +213,10 @@ interface TrafficWeeklyLineChartBySemesterProps {
   cardSpan?: "full" | "half";
   title?: string;
   description?: string | null;
+  /** Which semester(s) to show. "both" = fall and spring; "fall" or "spring" = single chart. */
+  semesterFilter?: TrafficSemesterFilter;
+  /** When true, render only the chart content (no Card wrapper). Use when embedding inside another card. */
+  hideCard?: boolean;
 }
 
 export function TrafficWeeklyLineChartBySemester({
@@ -212,6 +225,8 @@ export function TrafficWeeklyLineChartBySemester({
   cardSpan = "full",
   title = DEFAULT_TITLE,
   description = DEFAULT_DESCRIPTION,
+  semesterFilter = "both",
+  hideCard = false,
 }: TrafficWeeklyLineChartBySemesterProps) {
   const fallWeekNumbers = useMemo(() => {
     const list: number[] = [];
@@ -224,16 +239,50 @@ export function TrafficWeeklyLineChartBySemester({
     return list;
   }, [maxWeek]);
 
+  const showFall = (semesterFilter === "both" || semesterFilter === "fall") && fallWeekNumbers.length > 0;
+  const showSpring = (semesterFilter === "both" || semesterFilter === "spring") && springWeekNumbers.length > 0;
+
   const chartSpan = cardSpan === "half" ? "half" : "full";
-  /* Full view: side by side with padding; half view: stacked, no top space. */
-  const contentClass =
-    cardSpan === "full"
+  /* Full view: side by side with padding; half view: stacked, no top space. When single semester, no grid. */
+  const isSingleChart = semesterFilter !== "both";
+  const contentClass = isSingleChart
+    ? "pt-0 pb-0"
+    : cardSpan === "full"
       ? "pt-6 grid grid-cols-1 md:grid-cols-2 gap-6"
       : "pt-0 pb-0 space-y-6";
   /* When full and side-by-side, use smaller width so two charts fit with gap. */
-  const chartWidth = cardSpan === "full" ? SIDE_BY_SIDE_WIDTH : undefined;
+  const chartWidth = cardSpan === "full" && !isSingleChart ? SIDE_BY_SIDE_WIDTH : undefined;
   /* Half view: shorter charts so card profile is roughly square. */
   const chartHeight = cardSpan === "half" ? HALF_VIEW_CHART_HEIGHT : undefined;
+
+  const content = (
+    <div className={contentClass}>
+      {showFall && (
+        <TrafficWeeklyLineChart
+          data={data}
+          allWeekNumbers={fallWeekNumbers}
+          semesterLabel="Fall semester"
+          cardSpan={chartSpan}
+          width={chartWidth}
+          height={chartHeight}
+          hideCard
+        />
+      )}
+      {showSpring && (
+        <TrafficWeeklyLineChart
+          data={data}
+          allWeekNumbers={springWeekNumbers}
+          semesterLabel="Spring semester"
+          cardSpan={chartSpan}
+          width={chartWidth}
+          height={chartHeight}
+          hideCard
+        />
+      )}
+    </div>
+  );
+
+  if (hideCard) return content;
 
   return (
     <Card>
@@ -245,30 +294,7 @@ export function TrafficWeeklyLineChartBySemester({
           )}
         </CardHeader>
       )}
-      <CardContent className={contentClass}>
-        {fallWeekNumbers.length > 0 && (
-          <TrafficWeeklyLineChart
-            data={data}
-            allWeekNumbers={fallWeekNumbers}
-            semesterLabel="Fall semester"
-            cardSpan={chartSpan}
-            width={chartWidth}
-            height={chartHeight}
-            hideCard
-          />
-        )}
-        {springWeekNumbers.length > 0 && (
-          <TrafficWeeklyLineChart
-            data={data}
-            allWeekNumbers={springWeekNumbers}
-            semesterLabel="Spring semester"
-            cardSpan={chartSpan}
-            width={chartWidth}
-            height={chartHeight}
-            hideCard
-          />
-        )}
-      </CardContent>
+      <CardContent>{content}</CardContent>
     </Card>
   );
 }

@@ -4,7 +4,6 @@ import { useRouter, usePathname } from "next/navigation";
 import { useState, useCallback, useEffect, useTransition } from "react";
 import {
   ScholarDataTable,
-  CollapsibleTableSection,
   type ScholarDataTableColumn,
 } from "@/components/scholar-data-table";
 import {
@@ -14,9 +13,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   formatMinutesToHoursAndMinutes,
+  WINTER_BREAK_CAMPUS_WEEK_NUMBER,
 } from "@/lib/time";
 import { SessionHeatMap } from "@/app/dev/session-logs/session-heat-map";
 import type { ScholarWithCompletedSession } from "@/lib/session-logs";
@@ -26,6 +27,8 @@ import {
 } from "@/app/dev/traffic/traffic-weekly-line-chart";
 import { TrafficHeatMapSection } from "@/app/dev/traffic/traffic-heat-map-section";
 import type { TrafficSession } from "@/lib/traffic";
+import { FormCompletionOverviewCard } from "@/components/form-completion-overview-card";
+import type { FormCompletionOverall } from "@/components/form-completion-overview-card";
 import { CohortPieChart } from "./cohort-pie-chart";
 
 function WeekPicker({
@@ -292,6 +295,81 @@ export function ProgressCell(props: ProgressCellProps) {
   );
 }
 
+function RoomEntriesCornerSummary({
+  trafficWeeklyData,
+  selectedWeekNum,
+  currentCampusWeek,
+  entryCountForSelectedWeek,
+  overrideEntryCount,
+}: {
+  trafficWeeklyData: WeekEntryCount[];
+  selectedWeekNum: number;
+  currentCampusWeek: number | null;
+  entryCountForSelectedWeek: number;
+  overrideEntryCount?: number | null;
+}) {
+  const thisWeekCount =
+    overrideEntryCount != null ? overrideEntryCount : entryCountForSelectedWeek;
+  const isCurrentWeek =
+    currentCampusWeek != null && selectedWeekNum === currentCampusWeek;
+  const priorWeekNum = selectedWeekNum - 1;
+  const priorWeekCount =
+    priorWeekNum >= 1
+      ? trafficWeeklyData.find((d) => d.weekNumber === priorWeekNum)?.entryCount ?? 0
+      : null;
+  const hasPrior = priorWeekCount !== null;
+  const diffAbs = hasPrior ? thisWeekCount - priorWeekCount : null;
+  const pctChange =
+    hasPrior && priorWeekCount > 0
+      ? ((thisWeekCount - priorWeekCount) / priorWeekCount) * 100
+      : null;
+
+  return (
+    <div className="absolute top-6 right-6 flex flex-row flex-wrap items-center justify-end gap-2">
+      <span className="text-lg font-semibold text-foreground">
+        {thisWeekCount} {thisWeekCount === 1 ? "entry" : "entries"}
+      </span>
+      {isCurrentWeek ? (
+        <span
+          className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium bg-muted/50 text-muted-foreground"
+          title="This week is still in progress; count will change."
+        >
+          currently collecting
+        </span>
+      ) : (
+        hasPrior && (
+          <span
+            className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium ${(diffAbs ?? 0) > 0
+              ? "bg-green-500/20 text-green-700 dark:text-green-400"
+              : (diffAbs ?? 0) < 0
+                ? "bg-red-500/20 text-red-700 dark:text-red-400"
+                : "bg-muted/50 text-muted-foreground"
+              }`}
+            title={
+              priorWeekCount != null
+                ? `Week ${selectedWeekNum}: ${thisWeekCount}. Week ${priorWeekNum}: ${priorWeekCount}.`
+                : undefined
+            }
+          >
+            {(diffAbs ?? 0) > 0 && <span aria-hidden>↑</span>}
+            {(diffAbs ?? 0) < 0 && <span aria-hidden>↓</span>}
+            {diffAbs != null && diffAbs > 0 ? "+" : ""}
+            {diffAbs}
+            {" vs prior week"}
+            {pctChange != null && (
+              <span className="opacity-90">
+                {" "}
+                ({pctChange >= 0 ? "+" : ""}
+                {Math.round(pctChange)}%)
+              </span>
+            )}
+          </span>
+        )
+      )}
+    </div>
+  );
+}
+
 function RoomEntriesThisWeek({
   trafficWeeklyData,
   selectedWeekNum,
@@ -300,12 +378,15 @@ function RoomEntriesThisWeek({
   entryCountForSelectedWeek,
   /** When set (e.g. after sync), use this for the selected week so the count is current. */
   overrideEntryCount,
+  /** When true, count is shown in card corner instead of here. */
+  hideCountInCorner,
 }: {
   trafficWeeklyData: WeekEntryCount[];
   selectedWeekNum: number;
   currentCampusWeek: number | null;
   entryCountForSelectedWeek: number;
   overrideEntryCount?: number | null;
+  hideCountInCorner?: boolean;
 }) {
   const thisWeekCount =
     overrideEntryCount != null
@@ -325,6 +406,8 @@ function RoomEntriesThisWeek({
     hasPrior && priorWeekCount > 0
       ? ((thisWeekCount - priorWeekCount) / priorWeekCount) * 100
       : null;
+
+  if (hideCountInCorner) return null;
 
   return (
     <div className="flex flex-row flex-wrap items-center gap-3 px-1 py-2">
@@ -372,42 +455,39 @@ function RoomEntriesThisWeek({
   );
 }
 
-function getScholarColumns(): ScholarDataTableColumn<MemoScholarRow>[] {
-  return [
-    {
-      id: "fd-progress",
-      header: "Front desk",
-      field: "fd_pct",
-      sortable: true,
-      sortField: "fd_pct",
-      renderCell: (row) => (
-        <ProgressCell
-          mode="time"
-          total={row.fd_total}
-          required={row.fd_required}
-          excuseMin={row.fd_excuse_min}
-          label="FD"
-        />
-      ),
-    },
-    {
-      id: "ss-progress",
-      header: "Study session",
-      field: "ss_pct",
-      sortable: true,
-      sortField: "ss_pct",
-      renderCell: (row) => (
-        <ProgressCell
-          mode="time"
-          total={row.ss_total}
-          required={row.ss_required}
-          excuseMin={row.ss_excuse_min}
-          label="SS"
-        />
-      ),
-    },
-  ];
-}
+const FD_COLUMN: ScholarDataTableColumn<MemoScholarRow> = {
+  id: "fd-progress",
+  header: "Front desk",
+  field: "fd_pct",
+  sortable: true,
+  sortField: "fd_pct",
+  renderCell: (row) => (
+    <ProgressCell
+      mode="time"
+      total={row.fd_total}
+      required={row.fd_required}
+      excuseMin={row.fd_excuse_min}
+      label="FD"
+    />
+  ),
+};
+
+const SS_COLUMN: ScholarDataTableColumn<MemoScholarRow> = {
+  id: "ss-progress",
+  header: "Study session",
+  field: "ss_pct",
+  sortable: true,
+  sortField: "ss_pct",
+  renderCell: (row) => (
+    <ProgressCell
+      mode="time"
+      total={row.ss_total}
+      required={row.ss_required}
+      excuseMin={row.ss_excuse_min}
+      label="SS"
+    />
+  ),
+};
 
 function getTLFormColumns(): ScholarDataTableColumn<MemoTLRow>[] {
   return [
@@ -435,6 +515,7 @@ export function MemoContent({
   scholars,
   teamLeaders,
   pieData,
+  formCompletionOverall,
   completedStudy,
   completedFd,
   trafficWeeklyData,
@@ -450,6 +531,7 @@ export function MemoContent({
   scholars: MemoScholarRow[];
   teamLeaders: MemoTLRow[];
   pieData: MemoPieData;
+  formCompletionOverall: FormCompletionOverall;
   completedStudy: ScholarWithCompletedSession[];
   completedFd: ScholarWithCompletedSession[];
   trafficWeeklyData: WeekEntryCount[];
@@ -468,7 +550,6 @@ export function MemoContent({
   trafficCardDescription?: string | null;
 }) {
   const router = useRouter();
-  const scholarColumns = getScholarColumns();
   const [freshEntryCount, setFreshEntryCount] = useState<number | null>(null);
 
   useEffect(() => {
@@ -499,13 +580,13 @@ export function MemoContent({
   return (
     <div className="container mx-auto max-w-5xl space-y-4 py-4">
       <div>
-        <h1 className="text-2xl font-bold">Scholar hours overview</h1>
+        <h1 className="text-2xl font-bold">Program Overview</h1>
         <p className="text-muted-foreground mt-1">
-          Front desk and study session hours by scholar. Week: {weekLabel}.
+         {weekLabel}.
         </p>
       </div>
 
-      <div className="flex flex-wrap items-center gap-4">
+      <div className="flex flex-wrap items-center gap-4 print:hidden">
         <WeekPicker
           currentCampusWeek={currentCampusWeek}
           selectedWeekNum={selectedWeekNum}
@@ -514,15 +595,114 @@ export function MemoContent({
           selectedWeekNum={selectedWeekNum}
           onSyncDone={handleSyncDone}
         />
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          onClick={() => window.print()}
+          className="print:hidden"
+        >
+          <Printer className="size-4" />
+          Print
+        </Button>
       </div>
 
-      {/* Room entries this week + cohort completion (FD and SS per cohort) */}
-      <Card>
+      {/* Cohort FD/SS completion — single row of 4 charts on narrow screens, two cards on md+ */}
+      <div className="md:hidden">
+        <Card>
+          <CardHeader>
+            <CardTitle>Cohort completion</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-row flex-wrap items-center justify-center gap-4 sm:gap-6">
+            <CohortPieChart
+              label="2024 FD"
+              percentComplete={pieData.cohort2024.fdPercent}
+              total={pieData.cohort2024.total}
+              completeCount={pieData.cohort2024.fdCompleteCount}
+              variant="fd"
+            />
+            <CohortPieChart
+              label="2024 SS"
+              percentComplete={pieData.cohort2024.ssPercent}
+              total={pieData.cohort2024.total}
+              completeCount={pieData.cohort2024.ssCompleteCount}
+              variant="ss"
+            />
+            <CohortPieChart
+              label="2025 FD"
+              percentComplete={pieData.cohort2025.fdPercent}
+              total={pieData.cohort2025.total}
+              completeCount={pieData.cohort2025.fdCompleteCount}
+              variant="fd"
+            />
+            <CohortPieChart
+              label="2025 SS"
+              percentComplete={pieData.cohort2025.ssPercent}
+              total={pieData.cohort2025.total}
+              completeCount={pieData.cohort2025.ssCompleteCount}
+              variant="ss"
+            />
+          </CardContent>
+        </Card>
+      </div>
+      <div className="hidden md:grid grid-cols-2 gap-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>Sophomores (2024)</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-row items-center justify-center gap-4">
+            <CohortPieChart
+              label="2024 FD"
+              percentComplete={pieData.cohort2024.fdPercent}
+              total={pieData.cohort2024.total}
+              completeCount={pieData.cohort2024.fdCompleteCount}
+              variant="fd"
+            />
+            <CohortPieChart
+              label="2024 SS"
+              percentComplete={pieData.cohort2024.ssPercent}
+              total={pieData.cohort2024.total}
+              completeCount={pieData.cohort2024.ssCompleteCount}
+              variant="ss"
+            />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Freshmen (2025)</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-row items-center justify-center gap-4">
+            <CohortPieChart
+              label="2025 FD"
+              percentComplete={pieData.cohort2025.fdPercent}
+              total={pieData.cohort2025.total}
+              completeCount={pieData.cohort2025.fdCompleteCount}
+              variant="fd"
+            />
+            <CohortPieChart
+              label="2025 SS"
+              percentComplete={pieData.cohort2025.ssPercent}
+              total={pieData.cohort2025.total}
+              completeCount={pieData.cohort2025.ssCompleteCount}
+              variant="ss"
+            />
+          </CardContent>
+        </Card>
+      </div>
+
+      <FormCompletionOverviewCard overall={formCompletionOverall} />
+
+      {/* Room entries this week + traffic chart for current semester only */}
+      <Card className="relative">
+        <RoomEntriesCornerSummary
+          trafficWeeklyData={trafficWeeklyData}
+          selectedWeekNum={selectedWeekNum}
+          currentCampusWeek={currentCampusWeek}
+          entryCountForSelectedWeek={trafficEntryCountForSelectedWeek}
+          overrideEntryCount={freshEntryCount}
+        />
         <CardHeader>
-          <CardTitle>Room entries this week</CardTitle>
-          <CardDescription>
-            Entry count for the selected week; cohort FD/SS completion below.
-          </CardDescription>
+          <CardTitle>Traffic log </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-6">
           <RoomEntriesThisWeek
@@ -531,80 +711,19 @@ export function MemoContent({
             currentCampusWeek={currentCampusWeek}
             entryCountForSelectedWeek={trafficEntryCountForSelectedWeek}
             overrideEntryCount={freshEntryCount}
+            hideCountInCorner
           />
-          {/* Cohort pies */}
-          <div className="flex min-h-0 flex-col border-t border-border/60 pt-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {/* Sophomores (2024) */}
-              <div className="flex min-h-0 flex-col">
-                <div className="flex items-center px-0.5 pb-0.5">
-                  <span className="text-sm font-semibold text-foreground">Sophomores (2024)</span>
-                </div>
-                <div className="flex flex-1 flex-row items-center justify-center gap-4 px-1 py-2">
-                  <CohortPieChart
-                    label="2024 FD"
-                    percentComplete={pieData.cohort2024.fdPercent}
-                    total={pieData.cohort2024.total}
-                    completeCount={pieData.cohort2024.fdCompleteCount}
-                    variant="fd"
-                  />
-                  <CohortPieChart
-                    label="2024 SS"
-                    percentComplete={pieData.cohort2024.ssPercent}
-                    total={pieData.cohort2024.total}
-                    completeCount={pieData.cohort2024.ssCompleteCount}
-                    variant="ss"
-                  />
-                </div>
-              </div>
-              {/* Freshmen (2025) */}
-              <div className="flex min-h-0 flex-col">
-                <div className="flex items-center px-0.5 pb-0.5">
-                  <span className="text-sm font-semibold text-foreground">Freshmen (2025)</span>
-                </div>
-                <div className="flex flex-1 flex-row items-center justify-center gap-4 px-1 py-2">
-                  <CohortPieChart
-                    label="2025 FD"
-                    percentComplete={pieData.cohort2025.fdPercent}
-                    total={pieData.cohort2025.total}
-                    completeCount={pieData.cohort2025.fdCompleteCount}
-                    variant="fd"
-                  />
-                  <CohortPieChart
-                    label="2025 SS"
-                    percentComplete={pieData.cohort2025.ssPercent}
-                    total={pieData.cohort2025.total}
-                    completeCount={pieData.cohort2025.ssCompleteCount}
-                    variant="ss"
-                  />
-                </div>
-              </div>
-            </div>
+          <div className="">
+            <TrafficWeeklyLineChartBySemester
+              data={trafficWeeklyData}
+              semesterFilter={selectedWeekNum > WINTER_BREAK_CAMPUS_WEEK_NUMBER ? "spring" : "fall"}
+              hideCard
+            />
           </div>
         </CardContent>
       </Card>
 
-      {/* Traffic: entry count by week (fall and spring) + heat map — same as dev/traffic */}
-      {trafficCardSpan === "half" ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <TrafficWeeklyLineChartBySemester
-            data={trafficWeeklyData}
-            cardSpan={trafficCardSpan}
-            title={trafficCardTitle}
-            description={trafficCardDescription}
-          />
-          <Card className="flex min-h-[200px] items-center justify-center border-dashed">
-            <CardContent className="flex flex-col items-center justify-center gap-1 p-6 text-center">
-              <span className="text-sm font-medium text-muted-foreground">
-                Placeholder
-              </span>
-              <span className="text-xs text-muted-foreground">
-                Another card can go here
-              </span>
-            </CardContent>
-          </Card>
-        </div>
-      ) : (
+      {trafficCardSpan !== "half" && (
         <TrafficWeeklyLineChartBySemester
           data={trafficWeeklyData}
           cardSpan={trafficCardSpan}
@@ -613,19 +732,21 @@ export function MemoContent({
         />
       )}
 
-      {/* Heat map */}
-      <SessionHeatMap completedStudy={completedStudy} completedFd={completedFd} />
+      {/* Heat map — hidden when printing */}
+      <div className="print:hidden">
+        <SessionHeatMap completedStudy={completedStudy} completedFd={completedFd} />
+      </div>
 
-      {/* Scholars table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Scholars</CardTitle>
-          <CardDescription>
-            Front desk and study session progress for the current week.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <CollapsibleTableSection title="Scholar hours (FD & SS)" defaultOpen={true}>
+      {/* Scholars — two distinct cards (FD and SS) side-by-side on md+ */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>Front desk</CardTitle>
+            <CardDescription>
+              Scholar hours for the current week.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
             {scholars.length === 0 ? (
               <p className="text-muted-foreground text-sm">No scholars with required hours.</p>
             ) : (
@@ -637,14 +758,42 @@ export function MemoContent({
                   header: "Scholar",
                   sortable: true,
                 }}
-                uidColumn={{ field: "uid", header: "UID", sortable: true }}
-                columns={scholarColumns}
+                columns={[FD_COLUMN]}
                 emptyMessage="No scholars"
+defaultSortColumnId="fd-progress"
+                  defaultSortDirection="desc"
               />
             )}
-          </CollapsibleTableSection>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Study session</CardTitle>
+            <CardDescription>
+              Scholar hours for the current week.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {scholars.length === 0 ? (
+              <p className="text-muted-foreground text-sm">No scholars with required hours.</p>
+            ) : (
+              <ScholarDataTable<MemoScholarRow>
+                data={scholars}
+                rowKeyField="uid"
+                nameColumn={{
+                  field: "scholar_name",
+                  header: "Scholar",
+                  sortable: true,
+                }}
+                columns={[SS_COLUMN]}
+                emptyMessage="No scholars"
+defaultSortColumnId="ss-progress"
+                  defaultSortDirection="desc"
+              />
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

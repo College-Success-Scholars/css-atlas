@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import type { UserProfile } from "./types";
 import { APP_ROLE_ORDER } from "./types";
+import { getSupabasePublicKey } from "./public-key";
 
 /**
  * Especially important if using Fluid compute: Don't put this client in a
@@ -14,9 +15,11 @@ import { APP_ROLE_ORDER } from "./types";
 export async function createClient() {
   const cookieStore = await cookies();
 
+  const supabaseKey = getSupabasePublicKey();
+
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_OR_ANON_KEY!,
+    supabaseKey!,
     {
       cookies: {
         getAll() {

@@ -59,7 +59,11 @@ export function ChartRadialStacked() {
             />
             <PolarRadiusAxis tick={false} tickLine={false} axisLine={false}>
               <Label
-                content={({ viewBox }) => {
+                content={({
+                  viewBox,
+                }: {
+                  viewBox?: { cx?: number; cy?: number }
+                }) => {
                   if (viewBox && "cx" in viewBox && "cy" in viewBox) {
                     return (
                       <text x={viewBox.cx} y={viewBox.cy} textAnchor="middle">

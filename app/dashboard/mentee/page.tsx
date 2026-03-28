@@ -25,6 +25,16 @@ interface TutoringSession {
   topic?: string
 }
 
+interface WeeklyEvent {
+  name: string
+  attended: boolean
+}
+
+interface SeminarAttendance {
+  missedEvents: number
+  weeklyEvents: WeeklyEvent[]
+}
+
 export default function MenteeMonitoringPage() {
   const [selectedMentee, setSelectedMentee] = useState("Alex Rodriguez")
   const [selectedWeek, setSelectedWeek] = useState("This Week")
@@ -80,7 +90,7 @@ export default function MenteeMonitoringPage() {
   }
   
   // Mock data for seminar attendance and events
-  const seminarData: Record<string, any> = {
+  const seminarData: Record<string, SeminarAttendance> = {
     "Alex Rodriguez": {
       missedEvents: 0,
       weeklyEvents: [
@@ -134,7 +144,7 @@ export default function MenteeMonitoringPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Mentee Monitoring</h1>
           <p className="text-muted-foreground">
-            Monitor your mentees' progress, activities, and performance
+            Monitor your mentees&apos; progress, activities, and performance
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -244,7 +254,9 @@ export default function MenteeMonitoringPage() {
                   <div>
                     <p className="font-medium">Overall Status</p>
                     <p className="text-sm text-muted-foreground">
-                      {seminarData[selectedMentee]?.weeklyEvents.filter((event: any) => event.attended).length || 0}/{seminarData[selectedMentee]?.weeklyEvents.length || 0} events attended
+                      {
+                        seminarData[selectedMentee]?.weeklyEvents.filter((event) => event.attended).length || 0
+                      }/{seminarData[selectedMentee]?.weeklyEvents.length || 0} events attended
                     </p>
                   </div>
                   <div>
@@ -259,7 +271,7 @@ export default function MenteeMonitoringPage() {
                 {/* Weekly Events List */}
                 <div className="space-y-2">
                   <h4 className="font-medium text-sm">Weekly Events:</h4>
-                  {seminarData[selectedMentee]?.weeklyEvents.map((event: any, index: number) => (
+                  {seminarData[selectedMentee]?.weeklyEvents.map((event, index: number) => (
                     <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
                       <span className="font-medium">{event.name}</span>
                       <div className="flex items-center gap-2">

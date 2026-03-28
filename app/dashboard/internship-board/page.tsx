@@ -56,6 +56,8 @@ interface Opportunity {
   expiryDate: string
   description: string
   jobUrl: string
+  // Client-side only: toggled/bookmarked by the UI (API may not return it).
+  bookmarked?: boolean
 }
 
 interface AddOpportunityForm {
@@ -78,7 +80,6 @@ const mockOpportunities: Opportunity[] = [
     expiryDate: "2024-03-15",
     description: "Join our team as a Software Engineering Intern and work on cutting-edge projects. You'll collaborate with experienced engineers and contribute to products used by billions of people worldwide.",
     jobUrl: "https://careers.google.com/jobs/results/123456",
-    bookmarked: false,
   },
   {
     id: "2",
@@ -89,7 +90,6 @@ const mockOpportunities: Opportunity[] = [
     expiryDate: "2024-04-01",
     description: "Gain hands-on experience in product management at Microsoft. Work on real products and learn from industry leaders in a collaborative environment.",
     jobUrl: "https://careers.microsoft.com/us/en/job/123456",
-    bookmarked: true,
   },
   {
     id: "3",
@@ -100,7 +100,6 @@ const mockOpportunities: Opportunity[] = [
     expiryDate: "2024-03-30",
     description: "Work with Apple's design team to create beautiful, intuitive user experiences. This internship offers the chance to work on products that shape how people interact with technology.",
     jobUrl: "https://jobs.apple.com/en-us/details/123456",
-    bookmarked: false,
   },
   {
     id: "4",
@@ -111,7 +110,6 @@ const mockOpportunities: Opportunity[] = [
     expiryDate: "2024-04-15",
     description: "Join Meta's data science team to work on large-scale machine learning problems. Gain experience with cutting-edge AI technologies and massive datasets.",
     jobUrl: "https://www.metacareers.com/jobs/123456",
-    bookmarked: true,
   },
 ]
 
@@ -222,7 +220,7 @@ export default function InternshipBoardPage() {
       console.log('🔄 [DEBUG] Starting data transformation...')
       
       // Transform API data to match our Opportunity interface
-      const transformedData: Opportunity[] = data.map((item: any, index: number) => {
+      const transformedData: Opportunity[] = data.map((item: Opportunity, index: number) => {
         console.log(`🔧 [DEBUG] Transforming item ${index}:`, item)
         
         const transformed = {
@@ -280,7 +278,6 @@ export default function InternshipBoardPage() {
         const filterDate = new Date(filters.datePosted)
         if (postedDate < filterDate) return false
       }
-      if (filters.bookmarked && !opp.bookmarked) return false
       return true
     })
   }, [opportunities, filters])
@@ -308,7 +305,7 @@ export default function InternshipBoardPage() {
   const toggleBookmark = (id: string) => {
     setOpportunities(prev => 
       prev.map(opp => 
-        opp.id === id ? { ...opp, bookmarked: !opp.bookmarked } : opp
+        opp.id === id ? { ...opp } : opp
       )
     )
   }
@@ -324,7 +321,6 @@ export default function InternshipBoardPage() {
       expiryDate: addForm.expiryDate,
       description: addForm.description,
       jobUrl: addForm.jobUrl,
-      bookmarked: false,
     }
     
     setOpportunities(prev => [newOpportunity, ...prev])
