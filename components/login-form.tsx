@@ -77,16 +77,11 @@ export function LoginForm({
     }
   };
 
-  const serif = { fontFamily: "var(--font-login-serif), serif" } as const;
-
   return (
     <div className={cn("flex flex-col gap-8", className)} {...props}>
 
       <div className="space-y-2 text-center lg:text-left">
-        <h1
-          className="text-balance text-3xl font-normal tracking-tight md:text-4xl"
-          style={serif}
-        >
+        <h1 className="text-balance text-3xl font-semibold leading-tight tracking-tight md:text-4xl">
           Welcome Back
         </h1>
       </div>
