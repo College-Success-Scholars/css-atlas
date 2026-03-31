@@ -33,6 +33,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { FormsDetailTables } from "./forms-detail-tables";
 
 export const metadata = {
   title: "Profile | Dev Tools",
@@ -318,77 +319,7 @@ export default async function DevProfilePage({ params, searchParams }: PageProps
       {/* Forms: MCF + WPL for TL */}
       {!isScholar && (
         <>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">MCF submissions</CardTitle>
-              <CardDescription>Mentor Check-in Form (mentor or mentee)</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {mcfRows.length === 0 ? (
-                <p className="text-muted-foreground text-sm">No MCF submissions.</p>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Created</TableHead>
-                      <TableHead>Mentor</TableHead>
-                      <TableHead>Mentee</TableHead>
-                      <TableHead>Meeting date</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {mcfRows.map((row) => (
-                      <TableRow key={row.id}>
-                        <TableCell className="text-sm">{formatDate(row.created_at)}</TableCell>
-                        <TableCell>
-                          <UidLink uid={row.mentor_uid ?? ""} label={row.mentor_name ?? row.mentor_uid ?? "—"} />
-                        </TableCell>
-                        <TableCell>
-                          <UidLink uid={row.mentee_uid ?? ""} label={row.mentee_name ?? row.mentee_uid ?? "—"} />
-                        </TableCell>
-                        <TableCell>{row.meeting_date ?? "—"}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">WPL submissions</CardTitle>
-              <CardDescription>Work Placement Log</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {wplRows.length === 0 ? (
-                <p className="text-muted-foreground text-sm">No WPL submissions.</p>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Created</TableHead>
-                      <TableHead>Scholar</TableHead>
-                      <TableHead>Hours</TableHead>
-                      <TableHead>Full name</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {wplRows.map((row) => (
-                      <TableRow key={row.id}>
-                        <TableCell className="text-sm">{row.created_at ? formatDate(row.created_at) : "—"}</TableCell>
-                        <TableCell>
-                          <UidLink uid={row.scholar_uid ?? ""} label={row.scholar_uid ?? "—"} />
-                        </TableCell>
-                        <TableCell>{row.hours_worked ?? "—"}</TableCell>
-                        <TableCell>{row.full_name ?? "—"}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
+          <FormsDetailTables mcfRows={mcfRows} wplRows={wplRows} />
         </>
       )}
     </div>
