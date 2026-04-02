@@ -1,11 +1,11 @@
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Clock } from "lucide-react"
-import { getCurrentUserWithProfilesRow } from "@/lib/supabase/server"
+import { getCurrentUserWithProfile } from "@/lib/supabase/server"
 import { getRecentFormSubmissions } from "@/lib/server/personal-monitoring"
 import { ActivityLogClient } from "./activity-log-client"
 
 export async function ActivityLog() {
-  const { user, profile } = await getCurrentUserWithProfilesRow()
+  const { user, profile } = await getCurrentUserWithProfile()
   const entries = await getRecentFormSubmissions({
     profile,
     userEmail: user?.email ?? null,

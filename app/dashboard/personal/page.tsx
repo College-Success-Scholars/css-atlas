@@ -4,7 +4,7 @@ import {
   CheckCircle2,
   CircleX
 } from "lucide-react"
-import { getCurrentUserWithProfilesRow } from "@/lib/supabase/server"
+import { getCurrentUserWithProfile } from "@/lib/supabase/server"
 import {
   getCurrentWeekContext,
   getCurrentWeekPersonalFormStatuses,
@@ -33,7 +33,7 @@ function displayTeams(teams: string[] | null | undefined): string {
 }
 
 export default async function PersonalMonitoringPage() {
-  const { user, profile } = await getCurrentUserWithProfilesRow()
+  const { user, profile } = await getCurrentUserWithProfile()
   if (!user) redirect("/auth/login")
   const name = displayName(profile)
   const avatarUrl = `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(name)}`
