@@ -1,25 +1,5 @@
 import "server-only";
 import { createClient, type ProfilesRow } from "@/lib/supabase/server";
-import {
-  getMcfFormLogsByUidAndWeek,
-  getWhafFormLogsByUid,
-  getWplFormLogsByUidAndWeek,
-} from "@/lib/server/form-logs/fetch";
-import { campusWeekToDateRange, dateToCampusWeek } from "@/lib/time";
-import { getWeekFetchEnd } from "@/lib/session-records";
-
-export type PersonalFormStatus = {
-  name: "WPL" | "MCF" | "WHAF";
-  status: "completed" | "incomplete";
-  detail: string;
-};
-
-export type CurrentWeekContext = {
-  weekNumber: number | null;
-  weekStartDate: Date | null;
-  weekEndDate: Date | null;
-  label: string;
-};
 
 export type ActivityFormType = "WHAF" | "WPL" | "MCF";
 
@@ -44,103 +24,6 @@ export type RecentFormSubmission = {
   meeting_notes?: string | null;
   needs_tutor?: string | null;
 };
-
-export function getCurrentWeekContext(): CurrentWeekContext {
-  const weekNumber = dateToCampusWeek(new Date());
-  if (typeof weekNumber !== "number") {
-    return {
-      weekNumber: null,
-      weekStartDate: null,
-      weekEndDate: null,
-      label: "Current week unavailable",
-    };
-  }
-
-  const range = campusWeekToDateRange(weekNumber);
-  return {
-    weekNumber,
-    weekStartDate: range?.startDate ?? null,
-    weekEndDate: range?.endDate ?? null,
-    label: `Week ${weekNumber}`,
-  };
-}
-
-export async function getCurrentWeekPersonalFormStatuses(params: {
-  profile: ProfilesRow | null;
-  userEmail: string | null;
-}): Promise<PersonalFormStatus[]> {
-  const { profile, userEmail } = params;
-  const { weekNumber: weekNum, label: currentWeekLabel } = getCurrentWeekContext();
-
-  if (typeof weekNum !== "number") {
-    return [
-      { name: "WPL", status: "incomplete", detail: currentWeekLabel },
-      { name: "MCF", status: "incomplete", detail: currentWeekLabel },
-      { name: "WHAF", status: "incomplete", detail: currentWeekLabel },
-    ];
-  }
-
-  const profileIdCandidate = typeof profile?.id === "string" ? profile.id : null;
-  const studentIdCandidate =
-    typeof profile?.student_id === "number" ? String(profile.student_id) : null;
-  const uidFromProfile = studentIdCandidate ?? profileIdCandidate;
-  const normalizedEmail = userEmail?.trim().toLowerCase() ?? null;
-
-  let mcfSubmitted = false;
-  let wplSubmitted = false;
-  let whafSubmitted = false;
-
-  if (uidFromProfile) {
-    const [mcfRows, wplRows, whafRows] = await Promise.all([
-      getMcfFormLogsByUidAndWeek(uidFromProfile, weekNum),
-      getWplFormLogsByUidAndWeek(uidFromProfile, weekNum),
-      getWhafFormLogsByUid(uidFromProfile),
-    ]);
-
-    mcfSubmitted = mcfRows.length > 0;
-    wplSubmitted = wplRows.length > 0;
-    whafSubmitted = whafRows.some(
-      (row) => row.created_at && dateToCampusWeek(new Date(row.created_at)) === weekNum
-    );
-  } else if (normalizedEmail) {
-    const range = campusWeekToDateRange(weekNum);
-    if (range) {
-      const supabase = await createClient();
-      const endDate = getWeekFetchEnd(range);
-      const [{ count: mcfCount }, { count: wplCount }, { count: whafCount }] =
-        await Promise.all([
-          supabase
-            .from("mcf_form_logs")
-            .select("id", { count: "exact", head: true })
-            .eq("submitted_by_email", normalizedEmail)
-            .gte("created_at", range.startDate.toISOString())
-            .lte("created_at", endDate.toISOString()),
-          supabase
-            .from("wpl_form_logs")
-            .select("id", { count: "exact", head: true })
-            .eq("submitted_by_email", normalizedEmail)
-            .gte("created_at", range.startDate.toISOString())
-            .lte("created_at", endDate.toISOString()),
-          supabase
-            .from("whaf_form_logs")
-            .select("id", { count: "exact", head: true })
-            .eq("submitted_by_email", normalizedEmail)
-            .gte("created_at", range.startDate.toISOString())
-            .lte("created_at", endDate.toISOString()),
-        ]);
-
-      mcfSubmitted = (mcfCount ?? 0) > 0;
-      wplSubmitted = (wplCount ?? 0) > 0;
-      whafSubmitted = (whafCount ?? 0) > 0;
-    }
-  }
-
-  return [
-    { name: "WPL", status: wplSubmitted ? "completed" : "incomplete", detail: currentWeekLabel },
-    { name: "MCF", status: mcfSubmitted ? "completed" : "incomplete", detail: currentWeekLabel },
-    { name: "WHAF", status: whafSubmitted ? "completed" : "incomplete", detail: currentWeekLabel },
-  ];
-}
 
 export async function getRecentFormSubmissions(params: {
   profile: ProfilesRow | null;
