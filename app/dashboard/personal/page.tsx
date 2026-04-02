@@ -1,15 +1,16 @@
 import { redirect } from "next/navigation"
-import { 
+import {
   CalendarDays,
   CheckCircle2,
   CircleX
 } from "lucide-react"
 import { getCurrentUserWithProfile } from "@/lib/supabase/server"
 import {
+  formatCampusWeekRangeLabel,
   getCurrentWeekContext,
   getCurrentWeekPersonalFormStatuses,
-} from "@/lib/server/personal-monitoring"
-import { PersonalActivityLog } from "@/components/dashboard/personal-activity-log"
+} from "./middleware"
+import { PersonalActivityLogSection } from "./personal-activity-log-section"
 
 function displayName(profile: {
   full_name: string | null
@@ -39,28 +40,20 @@ export default async function PersonalMonitoringPage() {
   const avatarUrl = `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(name)}`
   const personalFormStatuses = await getCurrentWeekPersonalFormStatuses({
     profile,
-    userEmail: user.email ?? null,
   })
   const weekContext = getCurrentWeekContext()
-  const weekRangeLabel =
-    weekContext.weekNumber &&
-    weekContext.weekStartDate &&
-    weekContext.weekEndDate
-      ? `Week ${weekContext.weekNumber}: ${new Intl.DateTimeFormat("en-US", {
-          month: "short",
-          day: "numeric",
-        }).format(weekContext.weekStartDate)} - ${new Intl.DateTimeFormat("en-US", {
-          month: "short",
-          day: "numeric",
-        }).format(weekContext.weekEndDate)}`
-      : "Current week unavailable"
+  const weekRangeLabel = formatCampusWeekRangeLabel(
+    weekContext.weekStartDate,
+    weekContext.weekEndDate,
+    weekContext.weekNumber
+  )
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Personal </h1>
         <div className="mt-3 space-y-1 text-sm">
-      
+
         </div>
       </div>
 
@@ -72,18 +65,18 @@ export default async function PersonalMonitoringPage() {
       </div>
 
       <div className="flex items-center gap-3 rounded-xl border border-border/60 bg-card px-3 py-2">
-            <img
-              src={avatarUrl}
-              alt={`${name} avatar`}
-              className="h-10 w-10 rounded-full border border-border/60 bg-muted object-cover"
-            />
-            <div>
-              <p className="font-semibold text-foreground">{name}</p>
-              <p className="text-muted-foreground">
-                {displayRole(profile?.program_role)} · {displayTeams(profile?.teams)}
-              </p>
-            </div>
-          </div>
+        <img
+          src={avatarUrl}
+          alt={`${name} avatar`}
+          className="h-10 w-10 rounded-full border border-border/60 bg-muted object-cover"
+        />
+        <div>
+          <p className="font-semibold text-foreground">{name}</p>
+          <p className="text-muted-foreground">
+            {displayRole(profile?.program_role)} · {displayTeams(profile?.teams)}
+          </p>
+        </div>
+      </div>
 
       {/* Form Status Cards */}
       <div className="grid gap-4 md:grid-cols-3">
@@ -93,17 +86,15 @@ export default async function PersonalMonitoringPage() {
               <div>
                 <p className="text-3xl font-semibold leading-none text-foreground">{form.name} Status</p>
                 <p
-                  className={`mt-1 text-3xl font-bold ${
-                    form.status === "completed" ? "text-emerald-500" : "text-orange-500"
-                  }`}
+                  className={`mt-1 text-3xl font-bold ${form.status === "completed" ? "text-emerald-500" : "text-orange-500"
+                    }`}
                 >
                   {form.status === "completed" ? "Completed" : "Incomplete"}
                 </p>
               </div>
               <div
-                className={`flex h-16 w-16 items-center justify-center rounded-full ${
-                  form.status === "completed" ? "bg-emerald-100" : "bg-orange-100"
-                }`}
+                className={`flex h-16 w-16 items-center justify-center rounded-full ${form.status === "completed" ? "bg-emerald-100" : "bg-orange-100"
+                  }`}
               >
                 {form.status === "completed" ? (
                   <CheckCircle2 className="h-8 w-8 text-emerald-600" />
@@ -116,7 +107,7 @@ export default async function PersonalMonitoringPage() {
         ))}
       </div>
 
-      <PersonalActivityLog profile={profile} userEmail={user.email ?? null} />
+      <PersonalActivityLogSection profile={profile} />
     </div>
   )
 }
