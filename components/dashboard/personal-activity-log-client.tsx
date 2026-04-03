@@ -1,7 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import type { ActivityFormType, RecentFormSubmission } from "@/lib/server/personal-monitoring"
+import type { ActivityFormType, RecentFormSubmission } from "@/lib/form-logs"
 import { useMemo, useState } from "react"
 import { SubmissionDetailsModal } from "./submission-details-modal"
 import { buildActivitySummary, formTone } from "./activity-log-dictionary"
@@ -25,8 +25,7 @@ export function PersonalActivityLogClient({ entries }: { entries: RecentFormSubm
   const [filter, setFilter] = useState<FilterType>("ALL")
 
   const visibleEntries = useMemo(() => {
-    const filtered = filter === "ALL" ? entries : entries.filter((entry) => entry.formType === filter)
-    return filtered.slice(0, 3)
+    return filter === "ALL" ? entries : entries.filter((entry) => entry.formType === filter)
   }, [entries, filter])
 
   return (

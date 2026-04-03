@@ -1,22 +1,14 @@
 import { Clock3 } from "lucide-react"
-import {
-  getRecentFormSubmissions,
-} from "@/lib/server/personal-monitoring"
+import { getRecentFormSubmissions } from "@/lib/server/form-logs"
 import type { ProfilesRow } from "@/lib/supabase/server"
 import { PersonalActivityLogClient } from "./personal-activity-log-client"
 
 export async function PersonalActivityLog({
   profile,
-  userEmail,
 }: {
   profile: ProfilesRow | null
-  userEmail: string | null
 }) {
-  const recentSubmissions = await getRecentFormSubmissions({
-    profile,
-    userEmail,
-    perFormLimit: 3,
-  })
+  const recentSubmissions = await getRecentFormSubmissions({ profile })
 
   return (
     <section className="space-y-3">
