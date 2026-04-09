@@ -36,8 +36,6 @@ function displayTeams(teams: string[] | null | undefined): string {
 export default async function PersonalMonitoringPage() {
   const { user, profile } = await getCurrentUserWithProfile()
   if (!user) redirect("/auth/login")
-  const name = displayName(profile)
-  const avatarUrl = `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(name)}`
   const personalFormStatuses = await getCurrentWeekPersonalFormStatuses({
     profile,
   })
@@ -81,10 +79,12 @@ export default async function PersonalMonitoringPage() {
       {/* Form Status Cards */}
       <div className="grid gap-4 md:grid-cols-3">
         {personalFormStatuses.map((form) => (
-          <div key={form.name} className="rounded-2xl border border-border/70 bg-card px-5 py-4 shadow-sm">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-3xl font-semibold leading-none text-foreground">{form.name} Status</p>
+          <Card key={form.name} className="gap-0 py-4 shadow-sm">
+            <CardHeader className="!flex flex-row items-start justify-between space-y-0 px-5 pb-2 pt-0">
+              <div className="space-y-1">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  {form.name} status
+                </CardTitle>
                 <p
                   className={`mt-1 text-3xl font-bold ${form.status === "completed" ? "text-emerald-500" : "text-orange-500"
                     }`}
@@ -97,13 +97,13 @@ export default async function PersonalMonitoringPage() {
                   }`}
               >
                 {form.status === "completed" ? (
-                  <CheckCircle2 className="h-8 w-8 text-emerald-600" />
+                  <CheckCircle2 className="h-6 w-6 text-emerald-600" />
                 ) : (
-                  <CircleX className="h-8 w-8 text-orange-600" />
+                  <CircleX className="h-6 w-6 text-orange-600" />
                 )}
               </div>
-            </div>
-          </div>
+            </CardHeader>
+          </Card>
         ))}
       </div>
 
