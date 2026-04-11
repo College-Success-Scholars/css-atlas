@@ -17,14 +17,15 @@ export const getActiveSemester = cache(
     async () => {
       const supabase = await createAnonClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+        process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
       );
       const { data, error } = await supabase
         .from("semesters")
         .select("iso_week_offset, start_date, end_date")
         .eq("is_active", true)
         .single();
-      if (error || !data) throw new Error("No active semester found");
+      if (error) throw new Error(error.message);
+      if (!data) throw new Error("No active semester found");
       return data;
     },
     ["active-semester"],
