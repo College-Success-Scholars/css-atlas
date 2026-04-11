@@ -13,7 +13,7 @@ import type {
   WahfRow,
   TutoringRow,
   SemesterRow,
-} from "@/lib/types/mentees"
+} from "@/lib/types/supabase"
 
 // ---------------------------------------------------------------------------
 // Week options

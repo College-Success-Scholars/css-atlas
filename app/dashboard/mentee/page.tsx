@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
-import type { GetMyMenteesRpcRow } from "@/lib/types/mentees"
+import type { GetMyMenteesRpcRow } from "@/lib/types/supabase"
 import { getISOWeek } from "date-fns";
 import { MenteeMonitoringClient } from "@/components/mentee-monitoring/mentee-monitoring-client";
 

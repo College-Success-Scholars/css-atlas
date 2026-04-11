@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import type { MenteeMonitoringClientProps } from "@/lib/types/mentees"
+import type { MenteeMonitoringClientProps } from "@/lib/types/supabase"
 import {
   computeWeekOptions,
   filterActivityForMenteeWeek,
@@ -103,9 +103,9 @@ export function MenteeMonitoringClient({
   const showAlert = !wahfStatus.submitted && wahfStatus.daysOverdue > 0
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 max-w-2xl mx-auto">
       {/* ---- Header ---- */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">{name}</h1>
           <p className="text-sm text-muted-foreground">
@@ -114,10 +114,11 @@ export function MenteeMonitoringClient({
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Mentee selector */}
+        {/* Width = two h-9 icon buttons + gap-1 + former week dropdown (190px) */}
+        <div className="flex w-full flex-col gap-2 sm:ml-auto sm:w-[calc(5rem+190px)] sm:shrink-0">
+          {/* Mentee selector — same width as week row below */}
           <Select value={selectedUid} onValueChange={setSelectedUid}>
-            <SelectTrigger className="w-[180px] cursor-pointer">
+            <SelectTrigger className="w-full cursor-pointer">
               <User className="size-4 shrink-0 text-muted-foreground" />
               <SelectValue placeholder="Select mentee" />
             </SelectTrigger>
@@ -130,12 +131,11 @@ export function MenteeMonitoringClient({
             </SelectContent>
           </Select>
 
-          {/* Week selector */}
-          <div className="flex items-center gap-1">
+          <div className="flex w-full items-center gap-1">
             <Button
               variant="outline"
               size="icon"
-              className="h-9 w-9 cursor-pointer"
+              className="h-9 w-9 shrink-0 cursor-pointer"
               disabled={!canGoBack}
               onClick={goBack}
               aria-label="Previous week"
@@ -143,26 +143,28 @@ export function MenteeMonitoringClient({
               <ChevronLeft className="size-4" />
             </Button>
 
-            <Select
-              value={String(selectedWeek)}
-              onValueChange={(v) => setSelectedWeek(Number(v))}
-            >
-              <SelectTrigger className="w-[190px] cursor-pointer">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {weekOptions.map((w) => (
-                  <SelectItem key={w.weekNum} value={String(w.weekNum)}>
-                    {w.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="min-w-0 flex-1">
+              <Select
+                value={String(selectedWeek)}
+                onValueChange={(v) => setSelectedWeek(Number(v))}
+              >
+                <SelectTrigger className="w-full min-w-0 cursor-pointer">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {weekOptions.map((w) => (
+                    <SelectItem key={w.weekNum} value={String(w.weekNum)}>
+                      {w.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
             <Button
               variant="outline"
               size="icon"
-              className="h-9 w-9 cursor-pointer"
+              className="h-9 w-9 shrink-0 cursor-pointer"
               disabled={!canGoForward}
               onClick={goForward}
               aria-label="Next week"

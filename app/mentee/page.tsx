@@ -4,7 +4,7 @@ import type {
   MenteeActivityRpcRow,
   MyMenteeRpcRow,
   WeekBreakRpcRow,
-} from "@/lib/types/mentees";
+} from "@/lib/types/supabase";
 import { redirect } from "next/navigation";
 import { getISOWeek } from "date-fns";
 

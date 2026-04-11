@@ -4,6 +4,13 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { CheckCircle2, CircleX } from "lucide-react"
 import type { RecentFormSubmission } from "@/lib/form-logs"
+import {
+  formatValue,
+  isEmptyValue,
+  getObjectValueByKeyPattern,
+  formatProjectItem,
+  formatMeetingTime12Hour,
+} from "@/lib/form-logs/form-view-helpers"
 
 function formatSubmittedAt(value: string | null) {
   if (!value) return "Unknown time"
@@ -16,25 +23,6 @@ function formatSubmittedAt(value: string | null) {
     minute: "2-digit",
     hour12: true,
   }).format(date)
-}
-
-function formatValue(value: unknown) {
-  if (value === null || value === undefined) return "—"
-  if (typeof value === "string") return value.trim() || "—"
-  if (typeof value === "number" || typeof value === "boolean") return String(value)
-  try {
-    return JSON.stringify(value)
-  } catch {
-    return "—"
-  }
-}
-
-function isEmptyValue(value: unknown) {
-  if (value === null || value === undefined) return true
-  if (typeof value === "string") return value.trim().length === 0
-  if (Array.isArray(value)) return value.length === 0
-  if (typeof value === "object") return Object.keys(value as Record<string, unknown>).length === 0
-  return false
 }
 
 function formatStructured(value: unknown, emptyLabel = "None") {
@@ -53,74 +41,6 @@ function formatStructured(value: unknown, emptyLabel = "None") {
     return entries.map(([k, v]) => `${k}: ${formatValue(v)}`).join(" | ")
   }
   return formatValue(value)
-}
-
-function formatMeetingTime12Hour(value: string | null | undefined) {
-  const raw = value?.trim()
-  if (!raw) return "—"
-  const match = raw.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/)
-  if (match) {
-    const hours = Number(match[1])
-    const minutes = match[2]
-    if (hours >= 0 && hours <= 23) {
-      const suffix = hours >= 12 ? "PM" : "AM"
-      const hour12 = hours % 12 === 0 ? 12 : hours % 12
-      return `${hour12}:${minutes} ${suffix}`
-    }
-  }
-  const date = new Date(`1970-01-01T${raw}`)
-  if (!Number.isNaN(date.getTime())) {
-    return new Intl.DateTimeFormat("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    }).format(date)
-  }
-  return raw
-}
-
-function getObjectValueByKeyPattern(
-  obj: Record<string, unknown>,
-  patterns: RegExp[]
-): unknown {
-  const key = Object.keys(obj).find((k) => patterns.some((p) => p.test(k)))
-  return key ? obj[key] : undefined
-}
-
-function formatProjectItem(item: unknown): string {
-  if (item === null || item === undefined) return ""
-  if (typeof item === "string") return item.trim()
-  if (typeof item !== "object") return String(item)
-
-  const obj = item as Record<string, unknown>
-  const projectName = getObjectValueByKeyPattern(obj, [
-    /project/i,
-    /task/i,
-    /activity/i,
-    /work/i,
-    /time.*did/i,
-    /what/i,
-    /name/i,
-  ])
-  const hoursValue = getObjectValueByKeyPattern(obj, [
-    /hours?/i,
-    /^hrs?$/i,
-    /duration/i,
-    /time/i,
-  ])
-
-  const projectLabel = formatValue(projectName).replace(/^—$/, "").trim()
-  const hoursLabel = formatValue(hoursValue).replace(/^—$/, "").trim()
-
-  if (projectLabel && hoursLabel) return `${projectLabel}: ${hoursLabel}`
-  if (projectLabel) return projectLabel
-  if (hoursLabel) return hoursLabel
-
-  const fallback = Object.entries(obj)
-    .filter(([, v]) => !isEmptyValue(v))
-    .map(([k, v]) => `${k}: ${formatValue(v)}`)
-    .join(" | ")
-  return fallback
 }
 
 function formatProjects(value: unknown) {
