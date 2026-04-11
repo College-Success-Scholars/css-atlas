@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { unstable_cache } from "next/cache";
+import { createClient as createAnonClient } from "@supabase/supabase-js"
 import { createClient } from "@/lib/supabase/server";
 import type { GetMyMenteesRpcRow } from "@/lib/types/supabase";
 
@@ -14,7 +15,10 @@ import type { GetMyMenteesRpcRow } from "@/lib/types/supabase";
 export const getActiveSemester = cache(
   unstable_cache(
     async () => {
-      const supabase = await createClient();
+      const supabase = await createAnonClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
       const { data, error } = await supabase
         .from("semesters")
         .select("iso_week_offset, start_date, end_date")
