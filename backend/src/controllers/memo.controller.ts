@@ -3,6 +3,7 @@ import type { AuthenticatedRequest } from "./auth.controller.js";
 import { syncMemo } from "../services/memo.service.js";
 import { getTrafficEntryCountForWeek } from "../services/traffic.service.js";
 import { getSupabaseClient } from "../services/supabase.service.js";
+import { getMemoPageData } from "../services/memo-page.service.js";
 
 // POST /api/memo/sync
 export async function sync(req: AuthenticatedRequest, res: Response) {
@@ -67,6 +68,23 @@ export async function refreshStats(req: AuthenticatedRequest, res: Response) {
     res.json({ data: { ok: true } });
   } catch (e) {
     res.status(500).json({ error: e instanceof Error ? e.message : "Failed to trigger refresh" });
+  }
+}
+
+// GET /api/memo/page-data?weekNum=X
+export async function pageData(req: AuthenticatedRequest, res: Response) {
+  const weekParam = req.query.weekNum as string | undefined;
+  const weekNum = weekParam != null ? parseInt(weekParam, 10) : NaN;
+  if (Number.isNaN(weekNum) || weekNum < 1) {
+    res.status(400).json({ error: "weekNum must be a number >= 1" });
+    return;
+  }
+  try {
+    const data = await getMemoPageData(weekNum);
+    res.json({ data });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e instanceof Error ? e.message : "Failed to build memo page data" });
   }
 }
 

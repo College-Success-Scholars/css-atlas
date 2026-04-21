@@ -1,6 +1,6 @@
 import { Clock3 } from "lucide-react"
 import { getRecentFormSubmissions } from "@/lib/server/form-logs"
-import type { ProfilesRow } from "@/lib/supabase/server"
+type ProfilesRow = Record<string, unknown> & { student_id?: number | null }
 import {
   Card,
   CardDescription,

@@ -2,6 +2,7 @@
 
 import { useRouter, usePathname } from "next/navigation";
 import { useState, useCallback, useEffect, useTransition } from "react";
+import { backendPost } from "@/lib/client/api-client";
 import {
   ScholarDataTable,
   type ScholarDataTableColumn,
@@ -101,18 +102,12 @@ function SyncButtons({
     setSyncing(mode);
     setMessage(null);
     try {
-      const res = await fetch("/api/memo/sync", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ weekNum: selectedWeekNum, mode }),
-      });
-      const json = await res.json();
-      if (!res.ok) {
-        setMessage({ type: "err", text: json.error ?? "Sync failed." });
+      const result = await backendPost<{ message?: string }>("/api/memo/sync", { weekNum: selectedWeekNum, mode });
+      if (!result.ok) {
+        setMessage({ type: "err", text: result.error });
         return;
       }
-      const data = json.data as { message?: string };
-      setMessage({ type: "ok", text: data.message ?? "Sync complete." });
+      setMessage({ type: "ok", text: result.data.message ?? "Sync complete." });
       onSyncDone();
     } catch (e) {
       setMessage({

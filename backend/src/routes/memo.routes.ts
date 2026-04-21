@@ -8,6 +8,9 @@ const router = Router();
 router.get("/weekly", requireAuth, memoController.weeklyMemo);
 router.post("/refresh-stats", requireAuth, memoController.refreshStats);
 
+// Full memo page data (all the processing in one call)
+router.get("/page-data", requireAuth, memoController.pageData);
+
 // These require team leader or above
 router.post("/sync", requireTeamLeaderOrAbove, memoController.sync);
 router.get("/traffic-count", requireTeamLeaderOrAbove, memoController.trafficCount);
