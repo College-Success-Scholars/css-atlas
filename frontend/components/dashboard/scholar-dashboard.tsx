@@ -1,26 +1,21 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { 
+import {
   ClipboardList,
   GraduationCap
 } from "lucide-react"
-import { createClient } from "@/lib/supabase/server";
+import { backendGet } from "@/lib/server/api-client";
 import { StudySessionChart } from "./study-session-chart"
 import { FrontDeskChart } from "./front-desk-chart"
 import { ActivityLog } from "./activity-log"
 
 export async function ScholarDashboard() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  
-  // Fetch user profile data from user_roster
-  const { data: profile } = await supabase
-    .from('user_roster')
-    .select('first_name, last_name')
-    .eq('id', user?.id)
-    .single();
+  const me = await backendGet<{ user: { id: string; email: string | null }; profile: { first_name?: string; last_name?: string } | null }>("/api/auth/me");
 
-  // Mock data - replace with actual Supabase queries later
+  const firstName = me?.profile?.first_name ?? me?.user?.email?.split('@')[0] ?? '';
+  const lastName = me?.profile?.last_name ?? '';
+
+  // Mock data - replace with actual queries later
   const studySessionHours = {
     completed: 3.5,
     total: 5
@@ -48,22 +43,22 @@ export async function ScholarDashboard() {
     <div className="space-y-12 p-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Welcome, {profile?.first_name || user?.email?.split('@')[0]} {profile?.last_name || ''}</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Welcome, {firstName} {lastName}</h1>
         </div>
       </div>
 
       {/* Four tracking cards in a single row */}
       <div className="grid gap-4 mt-4 md:grid-cols-4 ">
         {/* Study Session Hours Card */}
-        <StudySessionChart 
-          completed={studySessionHours.completed} 
+        <StudySessionChart
+          completed={studySessionHours.completed}
           total={studySessionHours.total}
         />
 
         {/* Front Desk Hours Card */}
-        <FrontDeskChart 
-          completed={frontDeskHours.completed} 
-          total={frontDeskHours.total} 
+        <FrontDeskChart
+          completed={frontDeskHours.completed}
+          total={frontDeskHours.total}
         />
 
         {/* WAHF Submission Status Card */}
@@ -117,7 +112,7 @@ export async function ScholarDashboard() {
       </div>
 
       {/* Activity Log */}
-      <div className="mt-4"> 
+      <div className="mt-4">
         <ActivityLog />
       </div>
     </div>

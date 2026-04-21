@@ -13,32 +13,22 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
-import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { UserRole } from "@/lib/auth";
-import { getCurrentProfile, getActiveSemester } from "@/lib/server/queries";
+import { backendGet } from "@/lib/server/api-client";
+import { getCurrentProfile } from "@/lib/server/queries";
 
 export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const supabase = await createClient();
-
-  const { data, error } = await supabase.auth.getClaims();
-
-  if (error || !data?.claims) {
-    console.error(error);
-    console.log(data?.claims);
+  // Check auth via backend — redirects to login if not authenticated
+  const meResult = await backendGet<{ user: { id: string; email: string | null }; profile: unknown }>("/api/auth/me").catch(() => null);
+  if (!meResult) {
     redirect("/auth/login");
   }
 
-  // Get user role
-  // const userRole = await getUserRole(); 
-  // REMEMBER TO UNCOMMENT THIS WHEN DONE TESTING and add import
-  const [ profile ] = await Promise.all([
-    getCurrentProfile()
-  ]);
+  const profile = await getCurrentProfile();
 
   return (
     <SidebarProvider>

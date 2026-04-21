@@ -13,24 +13,19 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
-import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { UserRole } from "@/lib/auth";
+import { backendGet } from "@/lib/server/api-client";
+import type { UserRole } from "@/lib/auth";
 import { DirectoryDashboard } from "@/components/dashboard/directory-dashboard";
 
 export default async function DirectoryPage() {
-  const supabase = await createClient();
-
-  const { data, error } = await supabase.auth.getClaims();
-
-  if (error || !data?.claims) {
-    console.error(error);
-    console.log(data?.claims);
+  const meResult = await backendGet<{ user: { id: string }; profile: unknown }>("/api/auth/me").catch(() => null);
+  if (!meResult) {
     redirect("/auth/login");
   }
 
   // Get user role
-  // const userRole = await getUserRole(); 
+  // const userRole = await getUserRole();
   // REMEMBER TO UNCOMMENT THIS WHEN DONE TESTING and add import
   const userRole = 'scholar' as UserRole;
 
