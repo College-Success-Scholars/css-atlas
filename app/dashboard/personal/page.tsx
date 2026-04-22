@@ -22,7 +22,7 @@ export default async function PersonalPage() {
     supabase.from('wpl_form_logs').select('*').eq('scholar_uid', profile.student_id)
   ]);
 
-  // Process the results
+  // Process the result
   const wahf = wahfResult.status === 'fulfilled' ? (wahfResult.value.data ?? []) : [];
   const mcf  = mcfResult.status  === 'fulfilled' ? (mcfResult.value.data  ?? []) : [];
   const wpl  = wplResult.status  === 'fulfilled' ? (wplResult.value.data  ?? []) : [];
