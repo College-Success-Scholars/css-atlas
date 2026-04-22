@@ -7,5 +7,6 @@ const router = Router();
 router.use(requireAuth);
 
 router.get("/minutes", activityController.minutes);
+router.get("/week/:weekNum", activityController.activityForWeek);
 
 export default router;

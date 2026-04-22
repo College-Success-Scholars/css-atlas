@@ -74,6 +74,12 @@ export default function DevPage() {
         >
           Profile Test →
         </Link>
+        <Link
+          href="/dev/activity-comparison"
+          className="text-primary hover:underline text-sm font-medium"
+        >
+          Activity vs Records Comparison →
+        </Link>
       </div>
 
       <DevTestClient />
